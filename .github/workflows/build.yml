@@ -1,0 +1,164 @@
+name: Build Cost iOS
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cost-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install development tools
+        run: |
+          mkdir -p build/logs
+          brew list --versions xcodegen || brew install xcodegen
+          python3 -m venv .tools/ci-python
+          .tools/ci-python/bin/python -m pip install --disable-pip-version-check -r scripts/requirements-dev.txt
+
+      - name: Validate source and packaging checks
+        run: |
+          .tools/ci-python/bin/python scripts/verify_foundation.py
+          .tools/ci-python/bin/python -m unittest discover -s scripts/tests -v
+          git diff --check
+
+      - name: Record selected toolchain
+        run: |
+          test -d "$DEVELOPER_DIR"
+          {
+            xcodebuild -version
+            xcrun swift --version
+            xcodegen --version
+            xcrun --sdk iphoneos --show-sdk-version
+            xcrun --sdk iphonesimulator --show-sdk-version
+            printf 'Runner image: %s %s\n' "$ImageOS" "$ImageVersion"
+          } | tee build/logs/toolchain.log
+
+      - name: Generate Xcode project
+        run: xcodegen generate | tee build/logs/xcodegen.log
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Cost.xcodeproj -scheme Cost \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            | tee build/logs/resolve.log
+          python3 scripts/record_resolved_packages.py
+
+      - name: Select and boot an available iPhone simulator
+        id: simulator
+        timeout-minutes: 5
+        run: python3 scripts/select_simulator.py
+
+      - name: Build for simulator
+        run: |
+          xcodebuild build \
+            -project Cost.xcodeproj -scheme Cost \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            -derivedDataPath build/DerivedData-simulator \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/logs/simulator-build.log
+
+      - name: Run hosted Swift tests
+        timeout-minutes: 10
+        env:
+          SIMULATOR_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        run: |
+          xcodebuild test \
+            -project Cost.xcodeproj -scheme CostTests \
+            -destination "$SIMULATOR_DESTINATION" \
+            -configuration Debug \
+            -derivedDataPath build/DerivedData-simulator \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            -resultBundlePath build/results/CostTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/logs/tests.log
+
+      - name: Archive for device without signing
+        run: |
+          xcodebuild archive \
+            -project Cost.xcodeproj -scheme Cost \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath build/Cost.xcarchive \
+            -derivedDataPath build/DerivedData-device \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+            | tee build/logs/device-archive.log
+
+      - name: Package and verify unsigned IPA
+        run: |
+          mkdir -p build/Payload
+          ditto build/Cost.xcarchive/Products/Applications/Cost.app build/Payload/Cost.app
+          ditto -c -k --norsrc --noextattr --keepParent build/Payload build/Cost-unsigned.ipa
+          python3 scripts/verify_ipa.py build/Cost-unsigned.ipa --output build/ipa-verification.json
+          shasum -a 256 build/Cost-unsigned.ipa > build/Cost-unsigned.ipa.sha256
+
+      - name: Upload unsigned IPA
+        id: ipa
+        uses: actions/upload-artifact@v7
+        with:
+          name: Cost-unsigned-ipa
+          path: |
+            build/Cost-unsigned.ipa
+            build/Cost-unsigned.ipa.sha256
+            build/ipa-verification.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Cost-build-evidence-${{ github.run_attempt }}
+          path: |
+            build/logs/
+            build/results/CostTests.xcresult/
+            build/Package.resolved
+            build/dependency-resolution.json
+            build/simulator.json
+            build/ipa-verification.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Summarize verified package
+        if: success()
+        env:
+          IPA_ARTIFACT_URL: ${{ steps.ipa.outputs.artifact-url }}
+        run: |
+          {
+            printf 'Unsigned IPA: %s\n\n' "$IPA_ARTIFACT_URL"
+            printf '```json\n'
+            cat build/ipa-verification.json
+            printf '\n```\n'
+          } >> "$GITHUB_STEP_SUMMARY"

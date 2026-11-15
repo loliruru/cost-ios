@@ -4,7 +4,7 @@ options:
   bundleIdPrefix: com.personal
   deploymentTarget:
     iOS: "18.0"
-  xcodeVersion: "16.0"
+  xcodeVersion: "16.4"
   developmentLanguage: zh-Hans
   generateEmptyDirectories: true
 
@@ -51,6 +51,8 @@ targets:
           - "**/.gitkeep"
     dependencies:
       - target: Cost
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost.tests

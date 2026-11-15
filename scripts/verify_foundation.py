@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import plistlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -127,6 +128,27 @@ def verify_files() -> None:
     print("PASS planned files/directories and local documentation links")
 
 
+def verify_workflow() -> None:
+    path = ROOT / ".github/workflows/build.yml"
+    if not path.exists():
+        return
+    workflow = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueLoader)
+    require(set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}, "Unexpected workflow triggers")
+    require(workflow["permissions"] == {"contents": "read"}, "Build token must be read-only")
+    job = workflow["jobs"]["build"]
+    require(job["runs-on"] == "macos-15" and job["timeout-minutes"] == 30, "Unexpected build runner/timeout")
+    require("secrets." not in path.read_text(encoding="utf-8"), "Unsigned build must not require user secrets")
+    # Parse the actual shell blocks; never execute macOS build commands on Windows.
+    bash = Path("C:/Program Files/Git/bin/bash.exe") if sys.platform == "win32" else shutil.which("bash")
+    require(bool(bash) and Path(bash).is_file(), "Bash is required to syntax-check workflow scripts")
+    scripts = [step["run"] for step in job["steps"] if "run" in step]
+    for script in scripts:
+        result = subprocess.run([str(bash), "--noprofile", "--norc", "-n"],
+                                input=script.encode("utf-8"), capture_output=True)
+        require(result.returncode == 0, "Workflow Bash syntax error: " + result.stderr.decode("utf-8", errors="replace"))
+    print(f"PASS workflow YAML, permissions/triggers and {len(scripts)} Bash script blocks")
+
+
 def verify_ignores() -> None:
     ignored = [
         "Cost.xcodeproj/project.pbxproj", "Cost.xcworkspace/contents.xcworkspacedata",
@@ -182,6 +204,7 @@ def main() -> None:
     args = parser.parse_args()
     verify_project()
     verify_files()
+    verify_workflow()
     verify_ignores()
     verify_audit(args.android_root)
     print("NOT RUN: XcodeGen generation, Swift compilation/tests, simulator/device build, IPA, device validation")

@@ -7,7 +7,7 @@
 | Phase | 目标 | 状态 |
 |---:|---|---|
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
-| 1 | Windows→GitHub→macOS→IPA 构建链路 | 未开始，等待用户批准 |
+| 1 | Windows→GitHub→macOS→IPA 构建链路 | 进行中（用户已批准，远端 loliruru/cost-ios） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 未开始 |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 未开始 |
 | 4 | 快捷模板 | 未开始 |
@@ -45,9 +45,11 @@ Phase 0/1 优先。端到端链路未通过，不开发业务。其后各阶段�
 
 ## Phase 1 — 端到端构建链路验证
 
-进入前需用户明确批准。创建 build.yml；把空入口改为 Text("Cost")；确认公开远端、推送；macos-15 安装 XcodeGen、记录实际 Xcode/SDK/GRDB 版本、解析 SPM、Simulator Build、CostTests hosted Test、unsigned iphoneos Archive、打包并上传 IPA。runner 与可用模拟器须在执行时核验，不能盲猜固定运行时。
+用户已明确批准执行本阶段，并指定公开远端 `https://github.com/loliruru/cost-ios.git`。创建 build.yml；把空入口改为 Text("Cost")；确认公开远端、推送；macos-15 安装 XcodeGen、记录实际 Xcode/SDK/GRDB 版本、解析 SPM、Simulator Build、CostTests hosted Test、unsigned iphoneos Archive、打包并上传 IPA。runner 与可用模拟器须在执行时核验，不能盲猜固定运行时。
 
 验收：Actions 全 green；有效 artifact、`Payload/Cost.app/`、设备架构/Info.plist/可执行文件正确；构建日志不含敏感信息。失败按真实日志修复重跑。SideStore/Sideloadly 最后一环由用户手动完成。完成提交 `ci(phase-1): end-to-end build pipeline verified` 后停止。
+
+当前实现与实际结果记录于 [Phase 1 构建链路](PHASE1_BUILD.md)。只有下载最终 run 的 IPA 并检查后才能标记完成；工作流 YAML 或本地打包校验器测试通过不代替 macOS Build/Test。
 
 ## Phase 2 — 数据层基础
 

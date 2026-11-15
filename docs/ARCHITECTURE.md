@@ -1,6 +1,6 @@
 # Cost iOS 架构
 
-状态：Phase 0 骨架；业务类型、数据库、网络、导航与后台任务均尚未实现。
+状态：Phase 1 构建链路验证中；业务类型、数据库、网络、导航与后台任务均尚未实现。
 
 ## 技术与边界
 
@@ -57,6 +57,6 @@ NavigationStack、TabView、Sheets 负责系统导航，路由/草稿恢复和�
 
 `project.yml` 是唯一工程与 SPM 配置，显式 Cost/CostTests shared schemes。测试为 hosted Swift Testing target。`.xcodeproj`/workspace 为生成产物；不维护重复的根 Package.swift 依赖图，原因见 ADR-002。
 
-Windows：YAML/Plist/JSON、文件/链接、忽略规则、审计基线等静态检查。macOS Actions（Phase 1）：XcodeGen → SPM resolve → simulator build/test → unsigned device archive → IPA 结构检查与 artifact。Phase 0 不创建 workflow、不推送、不宣称编译成功。
+Windows：YAML/Plist/JSON、文件/链接、忽略规则、审计基线、workflow Bash 语法和 IPA 校验器测试。macOS Actions（Phase 1）：XcodeGen → SPM resolve → simulator build/test → unsigned device archive → IPA 结构检查与 artifact。实际构建/测试证据见 [Phase 1](PHASE1_BUILD.md)，不以本地静态检查代替编译。
 
 后续测试覆盖 Money/Decimal/日期/统计/异常 Domain、GRDB CRUD/所有 Migration/事务/快照、固定 Provider 响应/错误、SwiftUI 关键流程和可访问性、后台补记、备份失败/恢复往返。Clock、Zone、ID、Provider 均可替换；正常测试不依赖真实网络。Android 历史验证结果只能作为参考。

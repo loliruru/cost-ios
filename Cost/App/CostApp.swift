@@ -7,7 +7,7 @@ struct CostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Color.clear
+            Text("Cost")
                 .environment(container)
         }
     }
