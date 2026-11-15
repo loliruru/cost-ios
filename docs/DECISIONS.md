@@ -46,4 +46,10 @@ Windows 只写源码；macOS GitHub Actions 做工程生成、SPM、模拟器 Bu
 
 ## ADR-008 — 阶段验证与诚实状态
 
-Phase 0 只做审计、独立 Git、文档、最小工程、hosted test 源码及本地静态检查。Swift 编译和测试尚未运行；不凭 YAML 成功声称 XcodeGen/IPA 通过。Phase 0/1 完成且构建链路通过前不写业务。每阶段提交后按用户原计划停止，由用户明确批准下一阶段。
+Phase 0 只做审计、独立 Git、文档、最小工程、hosted test 源码及本地静态检查；当时未运行 Swift 编译/测试。不凭 YAML 成功声称 XcodeGen/IPA 通过。Phase 0/1 完成且构建链路通过前不写业务。每阶段提交后按用户原计划停止，由用户明确批准下一阶段。
+
+## ADR-009 — Phase 1 已验证工具链与 target 预设
+
+2026-11-15 用户授权 Phase 1 并指定 loliruru/cost-ios 公开远端。实际验证 Xcode 16.4 / Swift compiler 6.1.2、Swift 6 language mode、XcodeGen 2.46.0、iOS SDK 18.5、GRDB 7.12.0。完整 Build/Test/unsigned Archive/IPA 往返证据见 [Phase 1](PHASE1_BUILD.md)，不把此次实际解析版本误称为 7.x 范围已永久 pin。
+
+XcodeGen target 预设会指定 AppIcon 和 iPhone/iPad 家族，project 级 family 不能覆盖 target 预设。因此在 App target 明确 iPhone-only，并将尚未创建的 AppIcon 名称清空；Phase 9 加图标资产后再显式选择。这个修复保留全部构建/测试门禁，不用占位商业素材或提前进行正式图标设计。

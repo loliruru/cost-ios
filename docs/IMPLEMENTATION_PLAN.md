@@ -7,7 +7,7 @@
 | Phase | 目标 | 状态 |
 |---:|---|---|
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
-| 1 | Windows→GitHub→macOS→IPA 构建链路 | 进行中（用户已批准，远端 loliruru/cost-ios） |
+| 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 未开始 |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 未开始 |
 | 4 | 快捷模板 | 未开始 |
@@ -49,7 +49,9 @@ Phase 0/1 优先。端到端链路未通过，不开发业务。其后各阶段�
 
 验收：Actions 全 green；有效 artifact、`Payload/Cost.app/`、设备架构/Info.plist/可执行文件正确；构建日志不含敏感信息。失败按真实日志修复重跑。SideStore/Sideloadly 最后一环由用户手动完成。完成提交 `ci(phase-1): end-to-end build pipeline verified` 后停止。
 
-当前实现与实际结果记录于 [Phase 1 构建链路](PHASE1_BUILD.md)。只有下载最终 run 的 IPA 并检查后才能标记完成；工作流 YAML 或本地打包校验器测试通过不代替 macOS Build/Test。
+实际结果（2026-11-15）：[run 43722646105](https://github.com/loliruru/cost-ios/actions/runs/43722646105) 全部 green；XcodeGen/SPM、Simulator Build、2 项 hosted Swift tests、unsigned device Archive、IPA 打包/校验/上传全部通过。Windows 下载后复核 Payload、Info.plist、arm64/iOS device Mach-O、未签名状态、可执行权限及 SHA-256，与 CI JSON/校验文件一致。IPA 1,283,261 bytes，版本 0.1.0 / build 1。工具链、GRDB revision、失败首轮根因、hash、artifact 链接和限制见 [Phase 1 构建链路](PHASE1_BUILD.md)。
+
+本地静态检查（含 11 段 Bash 语法、35 项忽略探针及 Android 53 文件 hash）和 6 项 IPA 校验器测试通过。保留 xcresult 与过滤后日志；没有用户密钥或 Apple 账户注入。以 `ci(phase-1): end-to-end build pipeline verified` 独立收尾提交。此阶段无主观视觉验收项；用户手动签名安装最后一环尚未执行。**停止，不进入 Phase 2。**
 
 ## Phase 2 — 数据层基础
 

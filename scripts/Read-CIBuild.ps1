@@ -1,14 +1,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Status', 'Watch', 'FailedLogs', 'Artifacts', 'Evidence', 'Download')]
+    [ValidateSet('List', 'Status', 'Watch', 'FailedLogs', 'Artifacts', 'Evidence', 'Download')]
     [string]$Mode,
-    [Parameter(Mandatory = $true)]
-    [ValidateRange(1, [long]::MaxValue)]
-    [long]$RunId
+    [ValidateRange(0, [long]::MaxValue)]
+    [long]$RunId = 0
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Mode -ne 'List' -and $RunId -lt 1) { throw 'RunId is required for this mode.' }
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskCli = Join-Path $taskRoot '.tools/github-cli/bin/gh.exe'
 if (-not (Test-Path -LiteralPath $taskCli)) {
@@ -20,6 +20,9 @@ $taskPreviousGoDebug = $env:GODEBUG
 try {
     $env:GODEBUG = 'tlsmlkem=0,http2client=0'
     switch ($Mode) {
+        'List' {
+            & $taskCli run list --repo loliruru/cost-ios --limit 5 --json databaseId,headSha,status,conclusion,url
+        }
         'Status' {
             & $taskCli run view $RunId --repo loliruru/cost-ios --json status,conclusion,jobs,url,headSha
         }
