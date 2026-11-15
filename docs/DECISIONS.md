@@ -1,0 +1,49 @@
+# Cost iOS 决策记录
+
+日期：2026-11-15（Asia/Singapore）。已确定的技术约束来自原始用户计划；未解决项不代表本阶段可以新增依赖或改变业务。
+
+## ADR-001 — Swift 6 / SwiftUI / GRDB
+
+采用 Swift 6 Strict Concurrency、iOS 18+、Observation、MVVM + Domain/UseCase 和 GRDB/SQLite。替代方案 SwiftData 不适合本项目需要的显式 SQL 聚合、跨表事务、复杂约束和可审查迁移，因此不采用。GRDB 是唯一第三方应用依赖；网络、图表、通知、密钥优先使用系统框架。
+
+GRDB 不会自动保证任意 SQL 的编译期正确性；仍需 schema、约束、查询与 Migration 测试。[GRDB 7.0.0 manifest](https://github.com/groue/GRDB.swift/blob/v7.0.0/Package.swift)声明 Swift tools 6.0 与 GRDB product，适合作为计划要求的依赖下界；`from: 7.0.0` 允许兼容 7.x 更新，不是精确版本锁定。Phase 1 记录实际解析版本与工具链；若需要可复现 pin，由工程唯一配置确定策略。
+
+## ADR-002 — project.yml 为唯一工程与依赖来源
+
+用 XcodeGen packages 定义 SPM GRDB，显式 App/Test targets 和两个 shared schemes；生成工程不入库。根 Package.swift 在原计划目录示意中出现，但不在 Phase 0 任务清单中；当前没有独立 Swift package target，故不增加第二份依赖配置或空壳包。应用仍通过 SPM 解析 GRDB，架构不变。将来确需独立 package 时先记录边界。
+
+Info.plist 为手写元数据，project.yml 只引用，并从 source resources 排除，防止重复 CopyBundle。测试使用 hosted CostTests，TEST_HOST 为 iPhone App 的可执行路径。项目配置形式按 [XcodeGen Project Spec](https://github.com/yonaskolb/XcodeGen/blob/master/Docs/ProjectSpec.md)；Windows YAML 检查不能代替 macOS XcodeGen/xcodebuild。
+
+## ADR-003 — Android 审计优先于简化清单
+
+业务基线固定 Android HEAD `9f461eb4efb25aa9e64bb7ec1cc9ba50d71f602b`，Phase 20 / Room v10。实际 18 个实体，其中 17 表是完整备份账本，restore_state 是不导出的设置 outbox。保留 visual_assets、recurring_rule_tags、资金表及其真实 SQL 名字，不按原计划简化表名丢字段。
+
+账户资金/删除保护/受管视觉并入 Phase 2 数据和 Phase 3 功能；Crypto 基础并入 Phase 7；完整兼容性在 Phase 8 验证。阶段顺序不变，当前只产出规格，不实现这些业务。
+
+DST gap 以 Android atZone 和现有测试的保留分钟平移为准：纽约 02:30→03:30，overlap 选较早 offset。该项澄清原计划“推进到下一有效时刻”的歧义，不另猜规则。历史文档中的“等待批准”以最新完成状态覆盖，不能把 Android 历史授权当作 iOS 后续阶段授权。
+
+## ADR-004 — 精确数值需对齐 BigDecimal
+
+Int64 minor units、0...18 scale、rate precision/scale 38/18、HALF_EVEN 与原始 token 解析已锁定。Foundation Decimal 的有限中间精度不能直接视为 Java BigDecimal 等价；Phase 2 用显式运算错误、字符串往返与边界向量验证，禁止静默中间舍入。若合法 Android 输入需要更宽中间运算，优先在项目内做精确十进制整数辅助，不能未经批准添加数值依赖或缩小产品规则。
+
+SQLite 聚合同样需要溢出设计，不能将 SUM 溢出转为 REAL 或 TOTAL 来“修复”。数值规则尚未实现，Phase 2 是验证门禁。
+
+## ADR-005 — 用户持有凭据与手动侧载
+
+iOS API Key 由用户在 Settings 输入、存 Keychain。无 key 返回 notConfigured 且不联网。公开源码/unsigned IPA 不带 Android 个人开发 key、Apple 账号、证书或配对材料。SideStore 的首次安装、配对、Apple ID 登录、签名与定期刷新由用户执行；本阶段不登录或操作设备。
+
+Windows 只写源码；macOS GitHub Actions 做工程生成、SPM、模拟器 Build/Test、unsigned device Archive 与 IPA 检查。Phase 1 才创建 workflow、确认远端及运行。SideStore 当前兼容性/签名限制以安装时实际官方说明验证，本阶段不把原计划中的时效信息当成已核验现状。
+
+## ADR-006 — 备份双向兼容与平台限制（待验证）
+
+冻结 Android COSTBK01/envelope v1、CSV 编码、17 表、七项设置、图片、AES-GCM/PBKDF2 参数和恢复 outbox 语义。GRDB live DB 不可直接宣称 Android Room 可打开：还涉及 user_version、Room identity、runtime triggers/indices 及 trusted staging 重放。Phase 8 需生成兼容的交换 SQLite 或显式映射，并用双向真实格式 fixture 验证。
+
+仅 GRDB 依赖的约束下，ZIP 容器和 Android WebP 的 iOS 受管图片编码尚无验证结论。不能擅自新增 ZIP/WebP 库、仅改文件扩展名、丢弃图片或将 JSON 当作已有完整备份。Phase 3 处理图片前、Phase 8 编写导出前分别做系统能力与格式实验；若系统 API 不满足要求，完成具体兼容性证据和选项后再请求用户决定。Phase 0 不因此停下其他已授权基础工作。
+
+## ADR-007 — 原生材质与部署版本分离
+
+最低部署始终 iOS 18；iOS 26 原生 glassEffect 必须同时具备支持它的 SDK 和运行期保护，旧系统回退 ultraThinMaterial/高对比 surface。平台判断集中 DesignSystem。Android 的 Shader、调度与 Material 栈只供语义参考，不移植实现。
+
+## ADR-008 — 阶段验证与诚实状态
+
+Phase 0 只做审计、独立 Git、文档、最小工程、hosted test 源码及本地静态检查。Swift 编译和测试尚未运行；不凭 YAML 成功声称 XcodeGen/IPA 通过。Phase 0/1 完成且构建链路通过前不写业务。每阶段提交后按用户原计划停止，由用户明确批准下一阶段。

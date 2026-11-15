@@ -1,0 +1,2 @@
+# Development-only YAML parsing; not an application/SPM dependency.
+PyYAML==6.0.3

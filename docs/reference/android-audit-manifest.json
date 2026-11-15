@@ -1,0 +1,268 @@
+{
+  "formatVersion": 1,
+  "auditedDate": "2026-11-15",
+  "timeZone": "Asia/Singapore",
+  "androidRevision": "9f461eb4efb25aa9e64bb7ec1cc9ba50d71f602b",
+  "trackedDiffClean": true,
+  "existingUntrackedFilesPresent": true,
+  "androidTestsRerun": false,
+  "schemaVersion": 10,
+  "roomIdentityHash": "3be6bf322210390fb222f35c65d4a343",
+  "entityCount": 18,
+  "exportedLedgerTables": [
+    "currencies",
+    "visual_assets",
+    "categories",
+    "accounts",
+    "tags",
+    "transactions",
+    "account_fund_openings",
+    "account_transfers",
+    "transaction_tags",
+    "fx_quotes",
+    "crypto_price_quotes",
+    "quick_templates",
+    "quick_template_tags",
+    "recurring_rules",
+    "recurring_rule_tags",
+    "recurring_executions",
+    "anomaly_feedback"
+  ],
+  "documents": [
+    "AGENTS.md",
+    "docs/ACCOUNT_FUNDS_GUIDE.md",
+    "docs/ACCOUNT_FUNDS_IMPLEMENTATION.md",
+    "docs/ACCOUNT_FUNDS_PROPOSAL.md",
+    "docs/ARCHITECTURE.md",
+    "docs/BACKUP_FORMAT.md",
+    "docs/CATEGORY_DELETION.md",
+    "docs/CATEGORY_ICON_PREVIEW.md",
+    "docs/CRYPTO_FOUNDATION.md",
+    "docs/DATA_MODEL.md",
+    "docs/DESIGN_SYSTEM.md",
+    "docs/FX_PROVIDER.md",
+    "docs/IMPLEMENTATION_PLAN.md",
+    "docs/INPUT_METADATA_FIXES.md",
+    "docs/LIQUID_GLASS_REFINEMENT.md",
+    "docs/PERSONAL_RELEASE.md",
+    "docs/PHASE15_HANDOFF.md",
+    "docs/PRODUCT_SPEC.md",
+    "docs/RELEASE_HARDENING.md"
+  ],
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "cc04fbf5321cb2c5002b552db87e69137661c3c1afbdbd5b0ccc6dda9e04eed3"
+    },
+    {
+      "path": "core/data/schemas/com.chinokafuu.cost.core.data.database.CostDatabase/10.json",
+      "sha256": "3aad15987c328018242ea445e260b763657e15598763fb3e89abe063c50b1d36"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/backup/BackupEnvelope.kt",
+      "sha256": "0119963df2c15f4b5dc961103027de14b14ef5abe4c0968863ba1a4826318ede"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/backup/LocalDataTransferRepository.kt",
+      "sha256": "6fd957ac44ae8ac1269d55099209b2df0c240cf08fa6cdb8e343b3b28c5641eb"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/backup/TransferDatabase.kt",
+      "sha256": "29b0d6cb996be00e5f55a3c20f60f17410201727505e0af8d225d3ff2244a96c"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/crypto/TwelveDataCryptoPriceProvider.kt",
+      "sha256": "e4cbe5523db0bfe40313af10dacc3e117fc978863b04bffdb1494291b2ab3115"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/AccountFundsMigration.kt",
+      "sha256": "151883ab3e803fcc03f26270d44af9f55941e42132674adaca43d39337771480"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/CostDatabase.kt",
+      "sha256": "4a9f0198732c011ad74059d8ff369e800631ee441e8a56799f1388510eb551e1"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/CurrencySeedData.kt",
+      "sha256": "af790d8486fc2e59830a3cd88105829077c1bedcbc3778c0ae166a014fb214d8"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/AccountFundsDao.kt",
+      "sha256": "c741e9b36abe08ea8d91841ca26362aa7f6647226bdb514c05662bbbb740a6ba"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/AnomalyDao.kt",
+      "sha256": "a3cf507dfc12e5bd969da57a5f2a080d0b9ccbb4a4b99eaa3651e03fb3fcdc07"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/CategoryDao.kt",
+      "sha256": "2758659c351ccfb6e3e2cb683ab1a420c87ad1605b5be45ec40561fbdc71c1da"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/QuickTemplateDao.kt",
+      "sha256": "7f0f4ab087577d6b317bafa0a4e8655e1ab21eb648b9eefcc0353f940c23aaac"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/RecurringRuleDao.kt",
+      "sha256": "588b6627e6aa0ccea4d4c7e7d8a2ed1cf40fe709b59cd7355969c6e5965a57e3"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/TagDao.kt",
+      "sha256": "91a2d44dd5811d6017b7b99b25d3ab4af225dc1a2b6ae1a4705e3f4bd45a22b6"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/database/dao/TransactionDao.kt",
+      "sha256": "cb8de44baba57a7d22d4f47c035737ec76f10c644716b31ce5eacccfb9ec7bc6"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/fx/TwelveDataExchangeRateProvider.kt",
+      "sha256": "40afff362500d3e343849a82cce44acac591c3745d92b864ea631e2c3fed59d4"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/repository/RoomAccountFundsRepository.kt",
+      "sha256": "9ba0f3d11c1ea68a84198094888549b91a054b7e883f1e46891741b6502da7c5"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/repository/RoomStatisticsRepository.kt",
+      "sha256": "0037512718e3df9a17b3c935c749ae265d46d97644786c991e6f797abc1888e5"
+    },
+    {
+      "path": "core/data/src/main/kotlin/com/chinokafuu/cost/core/data/settings/BackupPreferences.kt",
+      "sha256": "ec6d012eca982787459322786746d62b91363731a969d8defcd3843f21a51883"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/anomaly/DetectAnomaliesUseCase.kt",
+      "sha256": "c136f5c98455a6a11c8b0e1874b297b31adb6e3badb148b33013f573a051e8e8"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/funds/AccountFunds.kt",
+      "sha256": "c2386ec66bf94170ec167a111520fdbb43710b05f812ecc70150906f0b894a66"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/fx/DefaultExchangeRateRepository.kt",
+      "sha256": "8ee340e11d56ec2ea1e3df4a1f27fc705ac9c66525f23daecc5334d4ae05758a"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/metadata/ManageMetadataUseCase.kt",
+      "sha256": "0a1beebc55a3506ce1bcb108409820366093f39b7552bb3d4fe0eda9c0a0baad"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/recurring/ProcessRecurringTransactionsUseCase.kt",
+      "sha256": "36dac3f1cfdd6ff46e61c7ee2563c9449a69180c37d2a7194a19f583f890906a"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/recurring/RecurringScheduleCalculator.kt",
+      "sha256": "0aef5f0179f87ff100bf5c38e6ea43ab454745852fbedb79b4101ba37375cb11"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/statistics/ObserveStatisticsUseCase.kt",
+      "sha256": "15018ff73a186cb1102485f02362cc94674f12ed602c57065ae423f3f71ecbdd"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/template/ManageQuickTemplatesUseCase.kt",
+      "sha256": "1de93ba84870719c47542e9322f1f736969078b3968b9dc685cec6fca7c2b7d9"
+    },
+    {
+      "path": "core/domain/src/main/kotlin/com/chinokafuu/cost/core/domain/transaction/ManageTransactionsUseCase.kt",
+      "sha256": "4081f3107419a4ce83485568a9a8885b229f506423d0223189889d9195498bbf"
+    },
+    {
+      "path": "core/domain/src/test/kotlin/com/chinokafuu/cost/core/domain/recurring/RecurringScheduleCalculatorTest.kt",
+      "sha256": "473b78264956b0e5e1d87947b330b75aa497246d1538525a3aefc031c89816db"
+    },
+    {
+      "path": "core/model/src/main/kotlin/com/chinokafuu/cost/core/model/ledger/AccountFunds.kt",
+      "sha256": "c9da057d8f369751c0d91f1f0f2f5e64ca415821950556e0500212941767594b"
+    },
+    {
+      "path": "core/model/src/main/kotlin/com/chinokafuu/cost/core/model/money/DecimalRate.kt",
+      "sha256": "c192bf4ff61789a34a4cec999aaa6c269379a34a9fa2fd30c5cf301512321548"
+    },
+    {
+      "path": "core/model/src/main/kotlin/com/chinokafuu/cost/core/model/money/Money.kt",
+      "sha256": "b3ee973cdb22caf1a49849bece544c89cd8557436fde5f3e0616f75a6e42169d"
+    },
+    {
+      "path": "core/model/src/test/kotlin/com/chinokafuu/cost/core/model/money/DecimalRateTest.kt",
+      "sha256": "0c88f8a6b020e3b0233f3309d1f0ac6c80d1929f5d297ad69d7d7902ad5ed00a"
+    },
+    {
+      "path": "core/model/src/test/kotlin/com/chinokafuu/cost/core/model/money/MoneyTest.kt",
+      "sha256": "b1a445b537929f7854f9b5085b3ffdc20e27c32688c166e57c1be33f05ed80d1"
+    },
+    {
+      "path": "docs/ACCOUNT_FUNDS_GUIDE.md",
+      "sha256": "be0de2df4f9929258e13ff8328029e87a998b5ff62f0bfff91ad69cb92473d91"
+    },
+    {
+      "path": "docs/ACCOUNT_FUNDS_IMPLEMENTATION.md",
+      "sha256": "77e0fde96e0d965a3a410c1020cfca1cfed46cd437a6c18c47e5df0870311ef8"
+    },
+    {
+      "path": "docs/ACCOUNT_FUNDS_PROPOSAL.md",
+      "sha256": "2039e5309a949ea82858402f2b3d68d643db26f60ab58d7b128974661591170c"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "476d9ba52fa6e6918e6b97960202b25f75146e16faa82911a5188541b6777c18"
+    },
+    {
+      "path": "docs/BACKUP_FORMAT.md",
+      "sha256": "b5b3b3e05efc37385c159fb2f1c76413ef5063c8c27a031a10924fa165666ece"
+    },
+    {
+      "path": "docs/CATEGORY_DELETION.md",
+      "sha256": "aebc3cc34ebcd5d02e37b787855242837c202448ab985ead508a23a2b82a7df7"
+    },
+    {
+      "path": "docs/CATEGORY_ICON_PREVIEW.md",
+      "sha256": "13728326ba7b9d7acc83cd8cd4118e742299d0ab304806c71629f3aee36bc99d"
+    },
+    {
+      "path": "docs/CRYPTO_FOUNDATION.md",
+      "sha256": "a47de3c0a45ae3c4e967fb417c6fa353ae5bdf5409fd90b08b7514b81194d321"
+    },
+    {
+      "path": "docs/DATA_MODEL.md",
+      "sha256": "9f7ef7e6eb95060a19179ba121b301e2aee521f79f371cda72859cdee73d9961"
+    },
+    {
+      "path": "docs/DESIGN_SYSTEM.md",
+      "sha256": "d90a9e5658e8d19af4007ceb5542af956a6ae1e97d03dba4cd3d0fff24af9f1f"
+    },
+    {
+      "path": "docs/FX_PROVIDER.md",
+      "sha256": "715fe8aaf6d5bcdcb101d78b5804662f995112e445e6cfec1a1348b22d80832b"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_PLAN.md",
+      "sha256": "809c1a1681461a9346737bfa64317c81ff0d713aa57e820e74c0ce030aae7b0e"
+    },
+    {
+      "path": "docs/INPUT_METADATA_FIXES.md",
+      "sha256": "4f4c0e119d02f8dafd7b5e1cf1bd6af7352c61caba2941537e183c1d61570a72"
+    },
+    {
+      "path": "docs/LIQUID_GLASS_REFINEMENT.md",
+      "sha256": "de7860ef276d50a5e42571cf8f6badff7772705cdbad4f4cdce7ad502cf31ce2"
+    },
+    {
+      "path": "docs/PERSONAL_RELEASE.md",
+      "sha256": "193e34517f70763afc8bfc19dfb6b9b6f00e8119e5fedcbb0675d6f2c24906a3"
+    },
+    {
+      "path": "docs/PHASE15_HANDOFF.md",
+      "sha256": "b108e76b7ca45e71cf6f9b8a1fbf98859a7eb1c8413bc14da962a9c677e1ea6b"
+    },
+    {
+      "path": "docs/PRODUCT_SPEC.md",
+      "sha256": "a091be7ba2b5cfa282746c8f283c577dd4a5aacb23543dcfdd480e222f4a4bd7"
+    },
+    {
+      "path": "docs/RELEASE_HARDENING.md",
+      "sha256": "6cd362b8d9456c9843bead924e9f69960416c6aec102c251bf7a07c2ab32e09f"
+    }
+  ],
+  "schemaSnapshot": "docs/reference/android-schema-v10.json",
+  "schemaSnapshotSha256": "3aad15987c328018242ea445e260b763657e15598763fb3e89abe063c50b1d36"
+}

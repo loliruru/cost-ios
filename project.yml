@@ -1,0 +1,82 @@
+name: Cost
+options:
+  minimumXcodeGenVersion: "2.42.0"
+  bundleIdPrefix: com.personal
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  developmentLanguage: zh-Hans
+  generateEmptyDirectories: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+
+targets:
+  Cost:
+    type: application
+    platform: iOS
+    sources:
+      - path: Cost
+        excludes:
+          - Info.plist
+          - "**/.gitkeep"
+    dependencies:
+      - package: GRDB
+        product: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost
+        INFOPLIST_FILE: Cost/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+  CostTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CostTests
+        excludes:
+          - "**/.gitkeep"
+    dependencies:
+      - target: Cost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Cost.app/Cost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Cost:
+    build:
+      targets:
+        Cost: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - CostTests
+    archive:
+      config: Release
+  CostTests:
+    build:
+      targets:
+        Cost: all
+        CostTests: [test]
+    test:
+      config: Debug
+      targets:
+        - CostTests

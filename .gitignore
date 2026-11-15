@@ -1,0 +1,75 @@
+# Generated Xcode/SPM output (project.yml is authoritative)
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+build/
+.build/
+.swiftpm/
+
+# Credentials, signing, local configuration
+.env
+.env.*
+!.env.example
+local.properties
+*.local.properties
+Secrets.swift
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.key
+*.pem
+*.jks
+*.keystore
+secrets/
+signing/
+
+# Personal ledgers, exports and portable backups
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.csv
+*.tsv
+*.json.backup
+*.costbackup
+*.costbk
+*.backup
+*.bak
+*.zip
+*.ipa
+*.xcarchive/
+/backup/
+/backups/
+/personal-data/
+
+# SideStore / device pairing / Apple account material
+*.plist.pairing
+*.pairing
+*.pairing.plist
+*.mobiledevicepairing
+*.pairingfile
+pairing*.plist
+*pairing*record*.plist
+pairing/
+pairing_files/
+anisette/
+
+# Local verification tools and reports
+.tools/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.xcresult/
+*.log
+
+# Editor and system state
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+.idea/
+.vscode/
