@@ -20,6 +20,12 @@ Actions 使用当前官方 [checkout](https://github.com/actions/checkout) / [up
 
 GitHub CLI 2.104.0 的官方 Windows 下载经发布 checksum 校验，工具只保存在忽略的 `.tools` 中。初始没有 GitHub 远端/CLI 登录，用户指定远端并选择 CLI 浏览器登录。登录开始时 TLS 握手超时，重试兼容客户端设置后取得授权码；不输出或提交令牌。最终登录、推送、Actions 与产物结果待下方记录。
 
+Windows 查询/等待/下载入口为 `scripts/Read-CIBuild.ps1 -Mode Status|Watch|FailedLogs|Artifacts|Evidence|Download -RunId <ID>`。兼容设置只在子进程中禁用 MLKEM/HTTP2 客户端路径，不关闭 TLS 或证书验证、不改系统代理；脚本只读远端，下载仅写入忽略的 build/downloads。失败日志保存到 build/ci-logs，只打印过滤后的错误上下文。
+
+首轮 [run 43721672166](https://github.com/loliruru/cost-ios/actions/runs/43721672166) 对应 `04e1209`，工程生成、SPM 和模拟器启动通过，模拟器 Build 因 XcodeGen 的默认 AppIcon 引用失败。Phase 0 没有图标资源，因此在 target 级明确清空该引用，正式图标仍在 Phase 9；同时 target 级设 iPhone-only，覆盖 XcodeGen 的 iPhone/iPad 默认设置，并增加静态回归检查。该失败轮不能计入通过。
+
+首轮实际环境：Xcode 16.4 / 16F6、Swift compiler 6.1.2（App `-swift-version 6`）、iOS SDK 18.5、XcodeGen 2.46.0、runner image 20261104.0514.1；GRDB 7.12.0 / `92a554cd0d5e8d67cb18993c6054e73fe42c066c`。
+
 ## 最终验收记录
 
 - [ ] 指定远端与公开状态核对，推送成功。

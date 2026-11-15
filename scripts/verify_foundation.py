@@ -74,6 +74,11 @@ def verify_project() -> None:
         for source in target["sources"]:
             require((ROOT / source["path"]).is_dir(), f"Missing source root: {source['path']}")
     require("Info.plist" in targets["Cost"]["sources"][0]["excludes"], "Exclude Info.plist from resources")
+    app_settings = targets["Cost"]["settings"]["base"]
+    require(app_settings["TARGETED_DEVICE_FAMILY"] == "1", "App target must override the iPad preset")
+    require("ASSETCATALOG_COMPILER_APPICON_NAME" in app_settings, "App icon selection must override the XcodeGen preset")
+    if icon_name := app_settings["ASSETCATALOG_COMPILER_APPICON_NAME"]:
+        require((ROOT / f"Cost/Resources/Assets.xcassets/{icon_name}.appiconset").is_dir(), "Selected AppIcon asset is missing")
     require(targets["Cost"]["dependencies"] == [{"package": "GRDB", "product": "GRDB"}], "App must link GRDB")
     require({"target": "Cost"} in targets["CostTests"]["dependencies"], "Tests must depend on App")
     test_settings = targets["CostTests"]["settings"]["base"]
