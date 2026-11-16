@@ -8,7 +8,7 @@
 |---:|---|---|
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
-| 2 | 精确数值、GRDB、schema、Migration、Repository | 未开始 |
+| 2 | 精确数值、GRDB、schema、Migration、Repository | 进行中（2026-11-16 用户批准） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 未开始 |
 | 4 | 快捷模板 | 未开始 |
 | 5 | 周期记账 | 未开始 |
@@ -51,13 +51,15 @@ Phase 0/1 优先。端到端链路未通过，不开发业务。其后各阶段�
 
 实际结果（2026-11-15）：[run 43722646105](https://github.com/loliruru/cost-ios/actions/runs/43722646105) 全部 green；XcodeGen/SPM、Simulator Build、2 项 hosted Swift tests、unsigned device Archive、IPA 打包/校验/上传全部通过。Windows 下载后复核 Payload、Info.plist、arm64/iOS device Mach-O、未签名状态、可执行权限及 SHA-256，与 CI JSON/校验文件一致。IPA 1,283,261 bytes，版本 0.1.0 / build 1。工具链、GRDB revision、失败首轮根因、hash、artifact 链接和限制见 [Phase 1 构建链路](PHASE1_BUILD.md)。
 
-本地静态检查（含 11 段 Bash 语法、35 项忽略探针及 Android 53 文件 hash）和 6 项 IPA 校验器测试通过。保留 xcresult 与过滤后日志；没有用户密钥或 Apple 账户注入。以 `ci(phase-1): end-to-end build pipeline verified` 独立收尾提交。此阶段无主观视觉验收项；用户手动签名安装最后一环尚未执行。**停止，不进入 Phase 2。**
+本地静态检查（含 11 段 Bash 语法、35 项忽略探针及 Android 53 文件 hash）和 6 项 IPA 校验器测试通过。保留 xcresult 与过滤后日志；没有用户密钥或 Apple 账户注入。以 `ci(phase-1): end-to-end build pipeline verified` 独立收尾提交。此阶段无主观视觉验收项。2026-11-16 用户报告通过 Sideloadly 签名安装成功，打开居中显示 Cost、无其他元素，与最小验证版一致，手动安装/启动最后一环完成；随后明确批准 Phase 2。
 
 ## Phase 2 — 数据层基础
 
 Money/DecimalRate、GRDB 初始化/WAL/显式 Migration、Android v10 语义的 18 实体、seed、Domain 协议和 Repository 基础 CRUD。保留视觉、规则标签、恢复 outbox 和资金表，不按简化清单漏表。iOS migration version 独立于 Room；详见 DATA_MODEL。
 
 验收：0...18 scale、严格输入位数、Int64 极值/溢出、精确 rescale、HALF_EVEN、38/18 与中间精度向量、原始 JSON 数字不经 Double；seed 不覆盖用户设置；CRUD/FK/唯一键/事务回滚/软删除/快照/Migration 测试；Actions Build+Test。记录 ZIP/WebP 与跨 ORM 格式待办，不在此实现业务页面。
+
+实现与实际验证记录见 [Phase 2 数据基础](PHASE2_DATA_FOUNDATION.md)。当前仍在实现/CI 验证，未标完成，未进入 Phase 3。
 
 ## Phase 3 — 核心账单与基础资料
 

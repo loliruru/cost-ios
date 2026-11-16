@@ -53,3 +53,11 @@ Phase 0 只做审计、独立 Git、文档、最小工程、hosted test 源码�
 2026-11-15 用户授权 Phase 1 并指定 loliruru/cost-ios 公开远端。实际验证 Xcode 16.4 / Swift compiler 6.1.2、Swift 6 language mode、XcodeGen 2.46.0、iOS SDK 18.5、GRDB 7.12.0。完整 Build/Test/unsigned Archive/IPA 往返证据见 [Phase 1](PHASE1_BUILD.md)，不把此次实际解析版本误称为 7.x 范围已永久 pin。
 
 XcodeGen target 预设会指定 AppIcon 和 iPhone/iPad 家族，project 级 family 不能覆盖 target 预设。因此在 App target 明确 iPhone-only，并将尚未创建的 AppIcon 名称清空；Phase 9 加图标资产后再显式选择。这个修复保留全部构建/测试门禁，不用占位商业素材或提前进行正式图标设计。
+
+## ADR-010 — Phase 2 精确中间数与 iOS schema v1
+
+2026-11-16 用户确认 Sideloadly 安装/启动成功并批准 Phase 2。Money/DecimalRate 的输入经 Foundation Decimal 与 canonical text 往返检查；乘除中间系数使用项目内十进制整数加/减/乘/长除，最后一次按余数和奇偶完成 HALF_EVEN，避免 Foundation Decimal 的有限精度先行舍入。没有 Float/Double 金额路径或新依赖；264 个 precision-120 Python Decimal 向量作为独立 oracle，包含大于 38 位中间乘积的合法结果。
+
+首个 iOS 数据版本为 v1（v1_schema/v1_seed），保留 Android v10 的 18 实体、列/索引及运行时业务约束，附加严格 INTEGER/TEXT 类型 guard 和资金标量校验，不复制 Room 内部身份表。未知数据库、未来版本或未知迁移拒绝打开，永不使用 destructive migration。SQLite 金额汇率字段与 Domain 显式映射；异步 read/write、ValueObservation AsyncSequence 不引入 Combine。
+
+Android 通用库只初始化币种，用户 iOS 计划还要求默认分类/账户。采用非个人最小 seed（其他支出、其他收入、默认账户），不复制个人初始化 ID 或真实金额；insert-ignore、迁移一次，不覆盖用户选择。完整业务/受管图片/备份兼容仍按后续 Phase 实现，不把表存在当作功能完成。

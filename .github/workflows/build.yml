@@ -42,6 +42,7 @@ jobs:
       - name: Validate source and packaging checks
         run: |
           .tools/ci-python/bin/python scripts/verify_foundation.py
+          .tools/ci-python/bin/python scripts/verify_phase2.py
           .tools/ci-python/bin/python -m unittest discover -s scripts/tests -v
           git diff --check
 

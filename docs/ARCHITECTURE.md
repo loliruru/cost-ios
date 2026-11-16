@@ -1,6 +1,6 @@
 # Cost iOS 架构
 
-状态：Phase 1 构建链路验证完成，最小 App 与 hosted tests 可构建；业务类型、数据库、网络、导航与后台任务均尚未实现。
+状态：Phase 2 数据基础实现与验证中。已加入精确 Model、Repository 协议、GRDB/迁移/存储 mapper 和 App 依赖装配；尚无业务 UI、网络 Provider、主导航或后台任务。
 
 ## 技术与边界
 
@@ -17,7 +17,7 @@ App -> 组装 Data 实现、Domain 协议与 Feature
 
 ## Composition root 与状态流
 
-`CostApp` 为入口，持有 `@MainActor @Observable AppContainer`。当前 container 为空，仅提供后续构造注入位置。后续 Repository、Provider、Clock、IANA zone、ID 生成器、文件存储和后台协调器在 App 层组装，不在 Domain 访问全局 Service Locator。
+`CostApp` 为入口，持有 `@MainActor @Observable AppContainer`。启动时异步打开私有数据库并组装各个 Domain Repository 协议，防止重复初始化；持久化失败不报告 ready，也不向用户输出 SQL/金额或原始异常。正常页面继续只显示 Cost。后续 Feature 通过构造参数接收所需协议；Provider、Clock、IANA zone、ID 生成器、文件存储和后台协调器也由 App 组装，不在 Domain 访问全局 Service Locator。
 
 Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送明确事件；ViewModel 验证展示输入，调用 UseCase/协议，将结果映射为可展示状态。导航只传稳定 ID。输入文本、选区、IME composition 保留在合适的 UI 编辑状态，异步结果不能覆盖更新的输入；保存时捕获不可变草稿。幂等键随草稿恢复，不重放无键写入。
 

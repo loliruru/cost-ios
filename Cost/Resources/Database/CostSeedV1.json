@@ -1,0 +1,209 @@
+{
+  "currencies": [
+    {
+      "code": "CNY",
+      "asset_type": "FIAT",
+      "display_name": "Chinese Yuan",
+      "symbol": "¥",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 0,
+      "metadata_version": 1
+    },
+    {
+      "code": "USD",
+      "asset_type": "FIAT",
+      "display_name": "US Dollar",
+      "symbol": "$",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 10,
+      "metadata_version": 1
+    },
+    {
+      "code": "JPY",
+      "asset_type": "FIAT",
+      "display_name": "Japanese Yen",
+      "symbol": "¥",
+      "default_scale": 0,
+      "is_enabled": 1,
+      "sort_order": 20,
+      "metadata_version": 1
+    },
+    {
+      "code": "EUR",
+      "asset_type": "FIAT",
+      "display_name": "Euro",
+      "symbol": "€",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 30,
+      "metadata_version": 1
+    },
+    {
+      "code": "GBP",
+      "asset_type": "FIAT",
+      "display_name": "Pound Sterling",
+      "symbol": "£",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 40,
+      "metadata_version": 1
+    },
+    {
+      "code": "HKD",
+      "asset_type": "FIAT",
+      "display_name": "Hong Kong Dollar",
+      "symbol": "HK$",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 50,
+      "metadata_version": 1
+    },
+    {
+      "code": "KRW",
+      "asset_type": "FIAT",
+      "display_name": "South Korean Won",
+      "symbol": "₩",
+      "default_scale": 0,
+      "is_enabled": 1,
+      "sort_order": 60,
+      "metadata_version": 1
+    },
+    {
+      "code": "SGD",
+      "asset_type": "FIAT",
+      "display_name": "Singapore Dollar",
+      "symbol": "S$",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 70,
+      "metadata_version": 1
+    },
+    {
+      "code": "AUD",
+      "asset_type": "FIAT",
+      "display_name": "Australian Dollar",
+      "symbol": "A$",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 80,
+      "metadata_version": 1
+    },
+    {
+      "code": "CAD",
+      "asset_type": "FIAT",
+      "display_name": "Canadian Dollar",
+      "symbol": "C$",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 90,
+      "metadata_version": 1
+    },
+    {
+      "code": "CHF",
+      "asset_type": "FIAT",
+      "display_name": "Swiss Franc",
+      "symbol": "CHF",
+      "default_scale": 2,
+      "is_enabled": 1,
+      "sort_order": 100,
+      "metadata_version": 1
+    },
+    {
+      "code": "USDT",
+      "asset_type": "CRYPTO",
+      "display_name": "Tether",
+      "symbol": "USDT",
+      "default_scale": 6,
+      "is_enabled": 0,
+      "sort_order": 200,
+      "metadata_version": 1
+    },
+    {
+      "code": "USDC",
+      "asset_type": "CRYPTO",
+      "display_name": "USD Coin",
+      "symbol": "USDC",
+      "default_scale": 6,
+      "is_enabled": 0,
+      "sort_order": 210,
+      "metadata_version": 1
+    },
+    {
+      "code": "BTC",
+      "asset_type": "CRYPTO",
+      "display_name": "Bitcoin",
+      "symbol": "BTC",
+      "default_scale": 8,
+      "is_enabled": 0,
+      "sort_order": 220,
+      "metadata_version": 1
+    },
+    {
+      "code": "ETH",
+      "asset_type": "CRYPTO",
+      "display_name": "Ether",
+      "symbol": "ETH",
+      "default_scale": 18,
+      "is_enabled": 0,
+      "sort_order": 230,
+      "metadata_version": 1
+    }
+  ],
+  "categories": [
+    {
+      "icon_key": "tag",
+      "color_key": "neutral",
+      "icon_source": "BUILT_IN",
+      "emoji": null,
+      "icon_asset_id": null,
+      "background_asset_id": null,
+      "background_focus": "CENTER",
+      "sort_order": 0,
+      "is_archived": 0,
+      "created_at_epoch_millis": 0,
+      "updated_at_epoch_millis": 0,
+      "id": "seed-expense-other",
+      "name": "其他支出",
+      "transaction_type": "EXPENSE",
+      "parent_id": null
+    },
+    {
+      "icon_key": "tag",
+      "color_key": "neutral",
+      "icon_source": "BUILT_IN",
+      "emoji": null,
+      "icon_asset_id": null,
+      "background_asset_id": null,
+      "background_focus": "CENTER",
+      "sort_order": 0,
+      "is_archived": 0,
+      "created_at_epoch_millis": 0,
+      "updated_at_epoch_millis": 0,
+      "id": "seed-income-other",
+      "name": "其他收入",
+      "transaction_type": "INCOME",
+      "parent_id": null
+    }
+  ],
+  "accounts": [
+    {
+      "icon_key": "wallet",
+      "color_key": "neutral",
+      "icon_source": "BUILT_IN",
+      "emoji": null,
+      "icon_asset_id": null,
+      "background_asset_id": null,
+      "background_focus": "CENTER",
+      "sort_order": 0,
+      "is_archived": 0,
+      "created_at_epoch_millis": 0,
+      "updated_at_epoch_millis": 0,
+      "id": "seed-default-account",
+      "name": "默认账户",
+      "currency_code": "CNY",
+      "is_default": 1
+    }
+  ]
+}

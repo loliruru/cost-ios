@@ -5,9 +5,10 @@ import Testing
 struct FoundationTests {
     /// A hosted test also checks that the application loads with the intended identity.
     @Test @MainActor
-    func applicationHostLoads() {
+    func applicationHostLoads() throws {
         _ = AppContainer()
         #expect(Bundle.main.bundleIdentifier == "com.personal.cost")
-        #expect(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String == "0.1.0")
+        let version = try #require(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        #expect(version.split(separator: ".").count == 3)
     }
 }

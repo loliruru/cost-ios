@@ -49,4 +49,4 @@ Windows 查询/等待/下载入口为 `scripts/Read-CIBuild.ps1 -Mode List|Statu
 
 本阶段收尾提交为 `ci(phase-1): end-to-end build pipeline verified`，只更新验收文档和只读监控入口；应用源码、测试、工程、workflow 与通过轮次一致。收尾 push 会再次触发相同 CI，最终结果以 main 最新 run 为准。
 
-尚未执行用户真机安装：IPA 是 unsigned，需要用户通过 SideStore/Sideloadly 签名安装；当前仅显示 Cost，正式 App 图标仍待 Phase 9。无主观视觉验收项。Phase 1 完成后停止，Phase 2 必须等待用户另行批准。
+2026-11-16 用户报告已通过 Sideloadly 签名安装，打开居中显示 Cost、没有其他元素，与最小验证版一致，手动安装/启动最后一环完成。该结果来自用户确认，不是代理自动安装；正式 App 图标仍待 Phase 9，无主观视觉验收项。用户随后明确批准 Phase 2。

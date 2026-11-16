@@ -1,6 +1,6 @@
 # Cost iOS 数据模型与 Android v10 映射
 
-状态：Phase 0 设计基线，尚无 iOS 数据库。来源：Android `CostDatabase.kt`、导出 `10.json`、Domain/DAO/备份代码与测试；快照见 [schema](reference/android-schema-v10.json)，文件摘要见[审计 manifest](reference/android-audit-manifest.json)。Room identity hash 为 `3be6bf322210390fb222f35c65d4a343`。
+状态：Phase 2 数据基础已实现，正在验证；iOS schema v1 独立于 Android Room v10。来源：Android `CostDatabase.kt`、导出 `10.json`、Domain/DAO/备份代码与测试；快照见 [schema](reference/android-schema-v10.json)，文件摘要见[审计 manifest](reference/android-audit-manifest.json)。Room identity hash 为 `3be6bf322210390fb222f35c65d4a343`；iOS 不冒充此 Room identity。
 
 ## 不变量与精确数值
 
@@ -72,11 +72,13 @@ Fiat latest 的 expiresAt = provider data timestamp + 300000 ms，`now <= expire
 | Fiat 启用 | CNY 2、USD 2、JPY 0、EUR 2、GBP 2、HKD 2、KRW 0、SGD 2、AUD 2、CAD 2、CHF 2 |
 | Crypto 停用 | USDT 6、USDC 6、BTC 8、ETH 18 |
 
-稳定 code/ID，insert-ignore，不覆盖 enabled/sort 或用户名称/图标。通用分类/账户 seed 取 Android 通用种子，不复制个人初始化账本；Phase 2 再实现。
+稳定 code/ID，insert-ignore，不覆盖 enabled/sort 或用户名称/图标。Android 通用数据库实际仅 seed 币种；iOS 原计划另要求默认分类/账户，因此 iOS 使用明确的非个人最小 seed：“其他支出”“其他收入”“默认账户”，稳定 ID 为 seed-expense-other/seed-income-other/seed-default-account。没有个人 ID、图片、账单或金额；账户资金不设置，seed 时间为确定的 epoch 0 元数据。用户编辑/停用的已有记录不覆盖，迁移只执行一次，不在每次启动重建被删除的默认资料。
 
 Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环；v6 异常反馈；v7 Crypto；v8 restore outbox；v9 最近索引；v10 账户资金。导出 v1...v10 和显式 Migration 当前存在。本 Phase 只复制无个人数据的 v10 schema 作为格式证据，未运行任何迁移。
 
-GRDB 版本与 Android Room user_version 不应盲目共享；iOS 显式迁移历史另行维护。Android 恢复要求的 Room identity/运行时约束须在导出兼容文件时生成或映射，不能将 GRDB live DB 原样改名宣称兼容。
+GRDB 版本与 Android Room user_version 不共享：iOS v1 注册 v1_schema / v1_seed 两个原子 migration，application_id = 1129272137（COSI）、user_version = 1，历史存 grdb_migrations。未知应用 ID/版本/migration 或外来数据库拒绝打开，不自动擦除。资源 CostSchemaV1.sql 冻结 18 表及索引，62 个 guard 包含 Android 运行时约束、每表 INSERT/UPDATE 类型检查及资金标量校验；SQL NULL 不能绕过验证。GRDB DatabasePool 为私有磁盘库启用 WAL，内存 Queue 用于测试。
+
+Android 恢复要求的 Room identity/运行时约束须在 Phase 8 的兼容导出中生成或映射，不能将 GRDB live DB 原样改名宣称兼容。本阶段完整资金、模板、周期等表和 storage record 已建立，其业务 UseCase 仍在相应后续阶段。
 
 ## 统计与异常数据
 
