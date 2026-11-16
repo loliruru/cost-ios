@@ -1,6 +1,6 @@
 # Cost iOS 架构
 
-状态：Phase 2 数据基础实现与验证中。已加入精确 Model、Repository 协议、GRDB/迁移/存储 mapper 和 App 依赖装配；尚无业务 UI、网络 Provider、主导航或后台任务。
+状态：Phase 2 数据基础已完成，macOS Build 与 36 项 hosted Swift tests 通过。已加入精确 Model、Repository 协议、GRDB/迁移/存储 mapper 和 App 依赖装配；尚无业务 UI、网络 Provider、主导航或后台任务。验证证据见 [Phase 2](PHASE2_DATA_FOUNDATION.md)。
 
 ## 技术与边界
 
@@ -25,7 +25,7 @@ Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送�
 
 ## 并发与数据库
 
-数据库在 Data 层封装，后续以 GRDB DatabasePool/WAL 提供一致快照及串行写入；具体 async API 以 Phase 2 锁定版本验证。UI MainActor 不同步执行数据库、图片、备份或网络工作。跨隔离边界传不可变 Sendable 值；不以 unchecked Sendable 或关闭严格并发掩盖问题。
+数据库在 Data 层封装，以 GRDB DatabasePool/WAL 提供一致快照及串行写入；Phase 2 在 GRDB 7.12.0 上验证 async read/write 与可取消 ValueObservation 流，内存测试使用 DatabaseQueue。UI MainActor 不同步执行数据库、图片、备份或网络工作。跨隔离边界传不可变 Sendable 值；不以 unchecked Sendable 或关闭严格并发掩盖问题。
 
 显式 GRDB DatabaseMigrator 维护 iOS schema 历史；启用 foreign keys、唯一键、约束/必要 trigger 和事务，禁止 destructive migration。保留 Android 表/列语义，备份通过映射而非宣称两个 ORM 文件可直接互换。运行时约束也必须进入迁移/导入校验，Room schema JSON 本身不含全部约束。
 
@@ -35,7 +35,7 @@ Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送�
 
 ## 精确数值与统计
 
-Int64 minor units 与字符串 Decimal rate/price，禁用 Double/Float。Foundation Decimal 只能作为受检查的精确运算工具：显式检测解析/乘除中间溢出及 lossOfPrecision，不能在最终 HALF_EVEN 前发生未察觉舍入。Phase 2 需证明与 Android BigDecimal 的边界一致；必要时在项目内实现十进制整数辅助算法，不擅自添加数值库。
+Int64 minor units 与字符串 Decimal rate/price，禁用 Double/Float。Foundation Decimal 输入必须经 canonical text 无损往返；乘除采用项目内十进制整数系数，允许超过 38 位的精确中间积，最终仅一次 HALF_EVEN，再检查正数与 Int64 溢出。Phase 2 已通过 Android 数值边界与 264 组 precision-120 独立对照；没有新增数值库。统计多行聚合仍在 Phase 6 实现。
 
 统计按 local epoch day 半开区间和冻结本位币查询，有界 bucket/样本并精确累加；SQLite SUM(Int64) 也有溢出，不能改成 REAL/TOTAL 绕过。详见[数据模型](DATA_MODEL.md)。
 

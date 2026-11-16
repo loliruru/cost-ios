@@ -2,9 +2,9 @@
 
 独立的 iOS 原生 Cost 记账应用。开发环境为 Windows；Swift 6 / SwiftUI / iOS 18+，数据库使用 GRDB，工程由 XcodeGen 生成。Android 参考项目只读。
 
-当前 Phase 1 已完成，用户也已通过 Sideloadly 安装并确认启动正常；正在执行 **Phase 2 数据层基础**。正常入口仍仅显示 Cost，记账 UI 留在 Phase 3。数据层状态与验证见 [Phase 2 记录](docs/PHASE2_DATA_FOUNDATION.md)。
+当前 **Phase 2 数据层基础已完成**：精确金额、GRDB schema/迁移和 Repository 已通过 macOS Build/Test。用户已通过 Sideloadly 安装 Phase 1 并确认启动正常。正常入口仍仅显示 Cost，记账 UI 留在尚未开始的 Phase 3。数据层状态与验证见 [Phase 2 记录](docs/PHASE2_DATA_FOUNDATION.md)。
 
-[Phase 1 已验证 IPA](https://github.com/loliruru/cost-ios/actions/runs/43722646105/artifacts/14165910336)（需登录 GitHub，artifact 保留 30 天）。后续版本的 SideStore/Sideloadly 签名和 iPhone 安装仍由用户手动完成。
+[Phase 2 已验证 IPA（0.2.0 / build 2）](https://github.com/loliruru/cost-ios/actions/runs/43886521271/artifacts/14234224862)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装仍由用户手动完成。
 
 先读 [协作规则](AGENTS.md)、[实施计划](docs/IMPLEMENTATION_PLAN.md)、[审计报告](docs/ANDROID_AUDIT.md)和[技术决策](docs/DECISIONS.md)。原始计划保存在 [cost-ios-codex-plan.md](cost-ios-codex-plan.md)。
 
@@ -13,6 +13,7 @@
 ```powershell
 python -m pip install --target .tools/python -r scripts/requirements-dev.txt
 python scripts/verify_foundation.py
+python scripts/verify_phase2.py
 git diff --check
 ```
 

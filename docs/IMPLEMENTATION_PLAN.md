@@ -8,7 +8,7 @@
 |---:|---|---|
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
-| 2 | 精确数值、GRDB、schema、Migration、Repository | 进行中（2026-11-16 用户批准） |
+| 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 未开始 |
 | 4 | 快捷模板 | 未开始 |
 | 5 | 周期记账 | 未开始 |
@@ -59,7 +59,7 @@ Money/DecimalRate、GRDB 初始化/WAL/显式 Migration、Android v10 语义的 
 
 验收：0...18 scale、严格输入位数、Int64 极值/溢出、精确 rescale、HALF_EVEN、38/18 与中间精度向量、原始 JSON 数字不经 Double；seed 不覆盖用户设置；CRUD/FK/唯一键/事务回滚/软删除/快照/Migration 测试；Actions Build+Test。记录 ZIP/WebP 与跨 ORM 格式待办，不在此实现业务页面。
 
-实现与实际验证记录见 [Phase 2 数据基础](PHASE2_DATA_FOUNDATION.md)。当前仍在实现/CI 验证，未标完成，未进入 Phase 3。
+实际结果（2026-11-16）：[run 43886521271](https://github.com/loliruru/cost-ios/actions/runs/43886521271) 全 green，验证代码提交为 `05ebe9461e78308485c745009d199ec8f5d9ca55`。36 项 hosted Swift tests（含 264 组独立精度向量）、Simulator Build、unsigned device Archive/IPA 均通过；下载后的 Payload/架构/版本/未签名状态和 SHA-256 与 CI 一致。18 表、62 guard、seed/类型/FK/层边界及 Android 53 文件只读基线检查通过。首次测试编译的 throws 标注问题已修复并重跑。实现、产物、限制见 [Phase 2 数据基础](PHASE2_DATA_FOUNDATION.md)。本阶段无主观视觉验收项，完成后停止，Phase 3 未开始。
 
 ## Phase 3 — 核心账单与基础资料
 

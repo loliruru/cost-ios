@@ -1,6 +1,6 @@
 # Cost iOS 数据模型与 Android v10 映射
 
-状态：Phase 2 数据基础已实现，正在验证；iOS schema v1 独立于 Android Room v10。来源：Android `CostDatabase.kt`、导出 `10.json`、Domain/DAO/备份代码与测试；快照见 [schema](reference/android-schema-v10.json)，文件摘要见[审计 manifest](reference/android-audit-manifest.json)。Room identity hash 为 `3be6bf322210390fb222f35c65d4a343`；iOS 不冒充此 Room identity。
+状态：Phase 2 数据基础已完成并通过 macOS Build/Test；iOS schema v1 独立于 Android Room v10。实际结果见 [Phase 2](PHASE2_DATA_FOUNDATION.md)。来源：Android `CostDatabase.kt`、导出 `10.json`、Domain/DAO/备份代码与测试；快照见 [schema](reference/android-schema-v10.json)，文件摘要见[审计 manifest](reference/android-audit-manifest.json)。Room identity hash 为 `3be6bf322210390fb222f35c65d4a343`；iOS 不冒充此 Room identity。
 
 ## 不变量与精确数值
 
@@ -74,7 +74,7 @@ Fiat latest 的 expiresAt = provider data timestamp + 300000 ms，`now <= expire
 
 稳定 code/ID，insert-ignore，不覆盖 enabled/sort 或用户名称/图标。Android 通用数据库实际仅 seed 币种；iOS 原计划另要求默认分类/账户，因此 iOS 使用明确的非个人最小 seed：“其他支出”“其他收入”“默认账户”，稳定 ID 为 seed-expense-other/seed-income-other/seed-default-account。没有个人 ID、图片、账单或金额；账户资金不设置，seed 时间为确定的 epoch 0 元数据。用户编辑/停用的已有记录不覆盖，迁移只执行一次，不在每次启动重建被删除的默认资料。
 
-Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环；v6 异常反馈；v7 Crypto；v8 restore outbox；v9 最近索引；v10 账户资金。导出 v1...v10 和显式 Migration 当前存在。本 Phase 只复制无个人数据的 v10 schema 作为格式证据，未运行任何迁移。
+Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环；v6 异常反馈；v7 Crypto；v8 restore outbox；v9 最近索引；v10 账户资金。Android 导出 v1...v10 和显式 Migration 当前存在；iOS 不运行或修改 Android 迁移。Phase 0 冻结无个人数据的 v10 schema 证据；Phase 2 已运行 iOS 新库、分步 seed、失败回滚/重试和拒绝未来库的迁移测试。
 
 GRDB 版本与 Android Room user_version 不共享：iOS v1 注册 v1_schema / v1_seed 两个原子 migration，application_id = 1129272137（COSI）、user_version = 1，历史存 grdb_migrations。未知应用 ID/版本/migration 或外来数据库拒绝打开，不自动擦除。资源 CostSchemaV1.sql 冻结 18 表及索引，62 个 guard 包含 Android 运行时约束、每表 INSERT/UPDATE 类型检查及资金标量校验；SQL NULL 不能绕过验证。GRDB DatabasePool 为私有磁盘库启用 WAL，内存 Queue 用于测试。
 

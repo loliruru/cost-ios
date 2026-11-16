@@ -18,7 +18,7 @@ Info.plist 为手写元数据，project.yml 只引用，并从 source resources 
 
 业务基线固定 Android HEAD `9f461eb4efb25aa9e64bb7ec1cc9ba50d71f602b`，Phase 20 / Room v10。实际 18 个实体，其中 17 表是完整备份账本，restore_state 是不导出的设置 outbox。保留 visual_assets、recurring_rule_tags、资金表及其真实 SQL 名字，不按原计划简化表名丢字段。
 
-账户资金/删除保护/受管视觉并入 Phase 2 数据和 Phase 3 功能；Crypto 基础并入 Phase 7；完整兼容性在 Phase 8 验证。阶段顺序不变，当前只产出规格，不实现这些业务。
+账户资金/删除保护/受管视觉并入 Phase 2 数据和 Phase 3 功能；Crypto 基础并入 Phase 7；完整兼容性在 Phase 8 验证。阶段顺序不变；Phase 0 仅冻结规格，Phase 2 已建立数据基础，完整业务仍在相应阶段。
 
 DST gap 以 Android atZone 和现有测试的保留分钟平移为准：纽约 02:30→03:30，overlap 选较早 offset。该项澄清原计划“推进到下一有效时刻”的歧义，不另猜规则。历史文档中的“等待批准”以最新完成状态覆盖，不能把 Android 历史授权当作 iOS 后续阶段授权。
 
@@ -26,7 +26,7 @@ DST gap 以 Android atZone 和现有测试的保留分钟平移为准：纽约 0
 
 Int64 minor units、0...18 scale、rate precision/scale 38/18、HALF_EVEN 与原始 token 解析已锁定。Foundation Decimal 的有限中间精度不能直接视为 Java BigDecimal 等价；Phase 2 用显式运算错误、字符串往返与边界向量验证，禁止静默中间舍入。若合法 Android 输入需要更宽中间运算，优先在项目内做精确十进制整数辅助，不能未经批准添加数值依赖或缩小产品规则。
 
-SQLite 聚合同样需要溢出设计，不能将 SUM 溢出转为 REAL 或 TOTAL 来“修复”。数值规则尚未实现，Phase 2 是验证门禁。
+SQLite 聚合同样需要溢出设计，不能将 SUM 溢出转为 REAL 或 TOTAL 来“修复”。Phase 2 已完成 Money/DecimalRate 精确运算门禁（见 ADR-010）；统计聚合在 Phase 6 实现。
 
 ## ADR-005 — 用户持有凭据与手动侧载
 
