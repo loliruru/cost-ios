@@ -138,29 +138,30 @@ struct LedgerFilterView: View {
                 Section("按冻结业务日期筛选") {
                     Toggle("限定日期", isOn: $dateEnabled)
                     if dateEnabled {
-                        DatePicker("开始", selection: $start, displayedComponents: .date)
-                        DatePicker("结束（包含当天）", selection: $end, in: start..., displayedComponents: .date)
+                        DatePicker("开始", selection: $start, displayedComponents: .date).environment(\.calendar, Calendar.localGregorian)
+                        DatePicker("结束（包含当天）", selection: $end, in: start..., displayedComponents: .date).environment(\.calendar, Calendar.localGregorian)
                     }
                 }
                 Button("重置筛选") { model.query = LedgerQuery(); dateEnabled = false }
             }
             .navigationTitle("筛选")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") {
-                model.query.startDay = dateEnabled ? Calendar.current.dateComponents([.year, .month, .day], from: start).dateEpochDay : nil
-                model.query.endDayExclusive = dateEnabled ? Calendar.current.dateComponents([.year, .month, .day], from: end).dateEpochDay.map { $0 + 1 } : nil
+                model.query.startDay = dateEnabled ? Calendar.localGregorian.dateComponents([.year, .month, .day], from: start).dateEpochDay : nil
+                model.query.endDayExclusive = dateEnabled ? Calendar.localGregorian.dateComponents([.year, .month, .day], from: end).dateEpochDay.map { $0 + 1 } : nil
                 dismiss()
             } } }
         }
         .onAppear {
             dateEnabled = model.query.startDay != nil
-            if let day = model.query.startDay { start = Calendar.current.date(from: Calendar.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: TimeInterval(day) * 86400))) ?? Date() }
-            if let day = model.query.endDayExclusive { end = Calendar.current.date(from: Calendar.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: TimeInterval(day - 1) * 86400))) ?? Date() }
+            if let day = model.query.startDay { start = Calendar.localGregorian.date(from: Calendar.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: TimeInterval(day) * 86400))) ?? Date() }
+            if let day = model.query.endDayExclusive { end = Calendar.localGregorian.date(from: Calendar.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: TimeInterval(day - 1) * 86400))) ?? Date() }
         }
     }
 }
 
 extension Calendar {
     static var utc: Calendar { var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!; return calendar }
+    static var localGregorian: Calendar { var calendar = Calendar(identifier: .gregorian); calendar.timeZone = .current; return calendar }
 }
 extension DateComponents {
     var dateEpochDay: Int64? { Calendar.utc.date(from: self).map { Int64($0.timeIntervalSince1970 / 86400) } }
@@ -187,7 +188,7 @@ struct LedgerDetailView: View {
                     LabeledContent("账户", value: ledger.accountName(row.accountID))
                     LabeledContent("业务日期", value: LedgerStyle.day(row.occurredAt.localEpochDay))
                     LabeledContent("时区", value: row.occurredAt.zoneID)
-                    Text(Date(timeIntervalSince1970: TimeInterval(row.occurredAt.epochMillis) / 1000), format: .dateTime.year().month().day().hour().minute().timeZone())
+                    Text(LedgerStyle.occurred(row.occurredAt))
                     if let note = row.note { Text(note).textSelection(.enabled) }
                     if !row.tagIDs.isEmpty { Text(ledger.tags.filter { row.tagIDs.contains($0.id) }.map(\.name).joined(separator: "、")) }
                 }

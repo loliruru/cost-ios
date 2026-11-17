@@ -16,6 +16,14 @@ enum LedgerStyle {
         formatter.dateFormat = "yyyy年M月d日 EEEE"
         return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(epochDay) * 86400))
     }
+    static func occurred(_ instant: OccurredAt) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(identifier: instant.zoneID)
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(instant.epochMillis) / 1000))
+    }
 }
 
 struct LedgerIcon: View {
