@@ -1,6 +1,6 @@
 # Cost iOS 架构
 
-状态：Phase 2 数据基础已完成，macOS Build 与 36 项 hosted Swift tests 通过。Phase 3 已加入账单/设置原生导航、Observation ViewModel、录入/基础资料/可选资金及受管媒体源码，当前等待本阶段最终 CI 和真机验收，见 [Phase 3](PHASE3_CORE_LEDGER.md)。网络 Provider 与后台任务尚未实现。
+状态：Phase 3 已加入账单/设置原生导航、Observation ViewModel、录入/基础资料/可选资金及受管媒体，通过 66 项 hosted Swift tests、2 项原生 UI tests 与 Build/Archive/IPA 验证，等待真机视觉验收，见 [Phase 3](PHASE3_CORE_LEDGER.md)。网络 Provider 与后台任务尚未实现。
 
 ## 技术与边界
 

@@ -1,6 +1,6 @@
 # Cost iOS 产品规格
 
-状态：移植规格，业务尚未实现。审计基线为 Android HEAD `9f461eb4efb25aa9e64bb7ec1cc9ba50d71f602b`、Phase 20、Room v10；日期 2026-11-15（Asia/Singapore）。
+状态：移植规格。已交付功能、正在验证的 Phase 3 和未开始阶段以[实施计划](IMPLEMENTATION_PLAN.md)为准；本规格不等于完成清单。审计基线为 Android HEAD `9f461eb4efb25aa9e64bb7ec1cc9ba50d71f602b`、Phase 20、Room v10；规格基线日期 2026-11-15（Asia/Singapore）。
 
 ## 产品与范围
 

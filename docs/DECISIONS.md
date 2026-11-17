@@ -68,4 +68,6 @@ Android 通用库只初始化币种，用户 iOS 计划还要求默认分类/账
 
 用户在本阶段明确选择“允许引入最小 WebP 编码依赖，保留原有交换格式”，例外放宽仅 GRDB 约束。采用 [SDWebImage/libwebp-Xcode 1.6.0](https://github.com/SDWebImage/libwebp-Xcode/tree/1.6.0)，以 project.yml exactVersion 固定；其 Package.swift 只有 libwebp C source target，没有其他 package 依赖，子模块指向 webmproject/libwebp。不引入 SDWebImage、Swift-WebP 或网络图片框架。BSD-3-Clause 许可证随 App 资源分发；CI 记录 wrapper 的实际 revision 并断言依赖树仅 GRDB + libwebp。
 
+CI 实际解析证据：GRDB 7.12.0 / `92a554cd0d5e8d67cb18993c6054e73fe42c066c`；libwebp-Xcode 1.6.0 / `2b5256c29ff4e20f2a0d5ee863b62b1a22144434`，没有第三个 package。仅依赖解析成功不代表本阶段应用 Build/Test 通过。
+
 编码仅在 Data 媒体适配层使用；ImageIO 检查尺寸、静态解码/方向校正与下采样，sRGB raw RGBA 去元数据、解除 alpha 预乘后调用 lossless WebP 编码。稳定 UUID 相对路径、kind/hash/processing version 去重；草稿 owner lease 与维护锁防止清理未提交文件；类别/账户引用在同一删除事务复核。完整备份容器与双向数据库交换仍属 Phase 8，本实验不代表完整备份已兼容。

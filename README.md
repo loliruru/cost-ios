@@ -2,9 +2,9 @@
 
 独立的 iOS 原生 Cost 记账应用。开发环境为 Windows；Swift 6 / SwiftUI / iOS 18+，数据库使用 GRDB，工程由 XcodeGen 生成。Android 参考项目只读。
 
-当前 **Phase 2 数据层基础已完成**：精确金额、GRDB schema/迁移和 Repository 已通过 macOS Build/Test。用户已通过 Sideloadly 安装 Phase 1 并确认启动正常。正常入口仍仅显示 Cost，记账 UI 留在尚未开始的 Phase 3。数据层状态与验证见 [Phase 2 记录](docs/PHASE2_DATA_FOUNDATION.md)。
+当前 **Phase 3 已实现并通过自动验证，等待真机视觉验收**：核心账单、基础资料、受管 WebP 图片和可选账户资金已通过 66 项 hosted Swift tests、2 项原生 UI tests、Simulator Build 与 unsigned device Archive/IPA 检查，见 [Phase 3 记录与验收步骤](docs/PHASE3_CORE_LEDGER.md)。尚未进入 Phase 4。
 
-[Phase 2 已验证 IPA（0.2.0 / build 2）](https://github.com/loliruru/cost-ios/actions/runs/43886521271/artifacts/14234224862)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装仍由用户手动完成。
+[Phase 3 已验证 IPA（0.3.0 / build 3）](https://github.com/loliruru/cost-ios/actions/runs/44124799270/artifacts/14349181988)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装仍由用户手动完成。当前快速录入支持本币；外币估值留在 Phase 7。
 
 先读 [协作规则](AGENTS.md)、[实施计划](docs/IMPLEMENTATION_PLAN.md)、[审计报告](docs/ANDROID_AUDIT.md)和[技术决策](docs/DECISIONS.md)。原始计划保存在 [cost-ios-codex-plan.md](cost-ios-codex-plan.md)。
 

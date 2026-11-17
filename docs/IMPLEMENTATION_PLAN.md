@@ -9,7 +9,7 @@
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
-| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 进行中（2026-11-17 获批；实现/验证中，图片格式门禁与真机验收待完成） |
+| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 实现/自动验证通过（2026-11-18，66 Swift tests + 2 UI tests / Build / IPA）；待用户真机布局与风格验收 |
 | 4 | 快捷模板 | 未开始 |
 | 5 | 周期记账 | 未开始 |
 | 6 | 统计与异常 | 未开始 |
@@ -70,6 +70,8 @@ Money/DecimalRate、GRDB 初始化/WAL/显式 Migration、Android v10 语义的 
 包含 Android 已有可选账户资金：revision 起点、未设置≠零、可用金额/成本、同币本金转账、关联损益原子保存/编辑/撤销/恢复与冲突/幂等保护。实现图片前先验证 ADR-006 的系统编码/交换方案。
 
 验收：全部 CRUD 主路径、资金计算/事务/守恒/旧账不追扣/受管损益保护、引用感知媒体生命周期、输入/IME/恢复/VoiceOver/Dynamic Type。Actions Build+Test；用户真机布局与风格验收后提交停止。
+
+实际自动验证（2026-11-18）：[run 44124799270](https://github.com/loliruru/cost-ios/actions/runs/44124799270) 全 green，源码 `6f542851f76531bd6c872a0a66d154a01b06b632`。66 项 hosted Swift tests（含 264 精度向量）、2 项原生 UI tests、Simulator Build、unsigned device Archive/IPA 全部通过；Windows 下载后复核版本 0.3.0 / build 3、arm64 iOS device、未签名状态、SHA-256 与 CI 一致，随包含准确 libwebp 许可证。系统 WebP 编码实验失败后，用户明确批准最小 libwebp-Xcode 1.6.0 依赖例外（ADR-011），没有改交换格式或新增其他依赖。详情、产物及验收步骤见 [Phase 3](PHASE3_CORE_LEDGER.md)。本阶段保留待真机视觉验收状态，未标记全部完成；技术交付后停止，不开始 Phase 4。
 
 ## Phase 4 — 快捷模板
 
