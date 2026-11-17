@@ -44,9 +44,11 @@ struct ManagedVisualTests {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("source.png"); try source().write(to: file)
-        let store = ManagedVisualStore(database: database, root: root)
+        let store = ManagedVisualStore(database: database, root: root,
+            environment: LedgerEnvironment(now: { 123456 }, newID: { "00000000-0000-0000-0000-000000000001" }))
         let first = try await store.importImage(file: file, kind: .icon, owner: "editor-one")
         let duplicate = try await store.importImage(file: file, kind: .icon, owner: "editor-two")
+        #expect(first.id == "00000000-0000-0000-0000-000000000001" && first.createdAt == 123456)
         #expect(first.id == duplicate.id)
         try await store.cleanup()
         #expect(try await store.imageData(id: first.id) != nil)

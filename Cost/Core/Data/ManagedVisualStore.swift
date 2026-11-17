@@ -65,6 +65,7 @@ enum WebPImageProcessor {
 actor ManagedVisualStore: ManagedVisualRepository {
     let database: AppDatabase
     let root: URL
+    let environment: LedgerEnvironment
     private var leases: [String: Set<String>] = [:]
     private var maintenanceBusy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -76,7 +77,9 @@ actor ManagedVisualStore: ManagedVisualRepository {
         if waiters.isEmpty { maintenanceBusy = false }
         else { waiters.removeFirst().resume() }
     }
-    init(database: AppDatabase, root: URL) { self.database = database; self.root = root }
+    init(database: AppDatabase, root: URL, environment: LedgerEnvironment = LedgerEnvironment()) {
+        self.database = database; self.root = root; self.environment = environment
+    }
     static func defaultRoot() throws -> URL {
         try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("Cost", isDirectory: true)
@@ -97,7 +100,7 @@ actor ManagedVisualStore: ManagedVisualRepository {
             try publish(processed.bytes, to: url)
             return try duplicate.visualModel()
         }
-        let id = UUID().uuidString.lowercased()
+        let id = environment.newID().lowercased()
         let path = "visual_assets/\(id).webp"
         let url = try resolve(path)
         leases[owner, default: []].insert(id)
@@ -105,7 +108,7 @@ actor ManagedVisualStore: ManagedVisualRepository {
             try publish(processed.bytes, to: url)
             let row = VisualAssetRecord(id: id, asset_kind: kind.rawValue, relative_path: path, mime_type: "image/webp",
                 width_px: Int64(processed.width), height_px: Int64(processed.height), byte_size: Int64(processed.bytes.count),
-                content_sha256: hash, processing_version: 1, created_at_epoch_millis: Int64(Date().timeIntervalSince1970 * 1000))
+                content_sha256: hash, processing_version: 1, created_at_epoch_millis: environment.now())
             try await database.writer.write { db in try row.insert(db) }
             return try row.visualModel()
         } catch {
