@@ -10,10 +10,10 @@
 - 本币快速录入、完整 IDENTITY 快照、稳定 request key、编辑版本校验、软删除/撤销/已删除账单恢复。外币保存明确失败并保留草稿，估值留在 Phase 7。
 - Observation ViewModel、系统输入控件、关闭/后台时的有界私有草稿保存与恢复；输入不做异步格式化回写。
 - 两级分类、排序、父子停用/恢复约束、全部历史引用删除保护；账户排序/默认/停用；标签 NFKC/空白/小写归一化、同名复用/恢复、编辑冲突与确认删除。
-- 内置图标与单个 emoji sequence 校验。受管图片、背景和引用清理须先解决 ADR-006 的格式门禁，尚未实现。
+- 内置图标与单个 emoji sequence 校验；受管 WebP 图片/背景、方向/焦点、去元数据/去重、owner lease、历史引用保护、零引用清理与损坏/缺失回退。
 - 可选资金 revision 起点、零与未设置区分、可用金额/投入成本精确派生、同币本金转账、关联损益原子保存/编辑/撤销/恢复、冲突/幂等与资金不足回滚。
 
-没有改动 schema v1、冻结 SQL、seed 或第三方依赖。资金派生使用项目内精确十进制系数，允许结果超过 Int64，不持久化漂移累计余额。读取在同一 SQLite 快照中以游标累加；历史本币/原币匹配优先级与 Android 一致。
+没有改动 schema v1、冻结 SQL 或 seed。仅按用户明确批准增加 libwebp-Xcode 1.6.0 编码依赖，见 ADR-011。资金派生使用项目内精确十进制系数，允许结果超过 Int64，不持久化漂移累计余额。读取在同一 SQLite 快照中以游标累加；历史本币/原币匹配优先级与 Android 一致。
 
 ## Android 参考与保护
 
@@ -23,12 +23,13 @@
 
 实验测试 `ImageCodecCapabilityTests.recordSystemImageExchangeCapabilities` 运行于真实 CI 的 iOS Simulator，记录 ImageIO encoder/decoder 清单，并实际尝试 PNG/WebP 编码。只生成 2×2 合成图，不截图、录屏或读取真实图片。第一轮因测试遗漏 Foundation import 编译失败，已修复；以最终 CI 输出为能力证据，不凭文档猜测编码支持。
 
-Android 交换契约为 WebP。若 iOS 系统不能编码，必须在有证据后由用户决定是否例外允许编码依赖或改变交换策略；未获决定前不擅自改格式、扩展名或丢图。
+实际 [run 44097781406](https://github.com/loliruru/cost-ios/actions/runs/44097781406) 输出：WebP decoder 存在，encoder 不存在，实际 destination 创建返回 unavailable；PNG 编码/回读成功。用户随后明确批准最小 WebP 编码依赖，采用 exactVersion 1.6.0 的独立 libwebp C 包，无其他 package 依赖。Android 交换格式保持 WebP；完整备份仍在 Phase 8 验证。
 
 ## 验证与剩余门禁
 
 - Windows foundation/schema/seed/层边界检查已运行通过；Windows 不提供 Swift/Xcode 编译结果。
-- 已新增资金 Domain/Repository、搜索分页与 Feature ViewModel 全链路测试，等待 macOS CI 执行。
+- 已新增资金 Domain/Repository、搜索分页、媒体生命周期与 Feature ViewModel 全链路测试，等待本阶段最终 macOS CI 验证。
+- 新增 CostUITests，仅使用 DEBUG 参数启动的独立内存库、隔离草稿和媒体目录；通过系统控件验证新增/编辑/删除/撤销、大字体深色下的草稿恢复与保存可达性。源码不调用截图、OCR 或录屏。
 - 必须完成本阶段 Build/Test/unsigned IPA、产物复核、受管视觉和客观无障碍/交互验证。
 - 用户手动安装后验收 Light/Dark、最大 Dynamic Type、中文输入/键盘/关闭恢复、VoiceOver、新增→详情→编辑→删除→撤销、基础资料与资金路径；未收到 PASS 前不标记 Phase 3 完成。
 

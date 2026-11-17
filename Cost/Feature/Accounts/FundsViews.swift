@@ -52,16 +52,16 @@ struct FundsEditorView: View {
         NavigationStack {
             Form {
                 if let account = model.account {
-                    Section(account.name) {
+                    Section {
                         Toggle("追踪资金", isOn: $model.enabled)
                         Picker("计算方式", selection: $model.kind) {
                             Text("可用金额").tag(AccountAmountKind.available); Text("投入成本").tag(AccountAmountKind.investmentCost)
                         }
                         currencyPicker
                         if model.enabled { TextField("新的当前金额（允许零）", text: $model.amount).keyboardType(.decimalPad) }
-                    } footer: { Text("每次保存追加一个起点。旧账不追扣；关闭后再开启需重新输入当前金额。投入成本只计本金，不随普通收支或市场价格变化。") }
+                    } header: { Text(account.name) } footer: { Text("每次保存追加一个起点。旧账不追扣；关闭后再开启需重新输入当前金额。投入成本只计本金，不随普通收支或市场价格变化。") }
                 } else {
-                    Section("本金") {
+                    Section {
                         accountPicker("转出", selection: $model.from)
                         accountPicker("转入", selection: $model.to)
                         currencyPicker
@@ -71,7 +71,7 @@ struct FundsEditorView: View {
                             Text("无").tag("")
                             ForEach(model.ledger.categories.filter { !$0.isArchived }, id: \.id) { Text(($0.type == .income ? "收入 · " : "支出 · ") + $0.name).tag($0.id) }
                         }
-                    } footer: { Text("只支持同币法币本金转账。损益仅适用于投入成本 → 可用金额，自动关联收支账单。手续费请单独记支出。") }
+                    } header: { Text("本金") } footer: { Text("只支持同币法币本金转账。损益仅适用于投入成本 → 可用金额，自动关联收支账单。手续费请单独记支出。") }
                     Section {
                         DatePicker("发生时间", selection: $model.date).environment(\.timeZone, TimeZone(identifier: model.zoneID) ?? .current)
                         LabeledContent("时区", value: model.zoneID)

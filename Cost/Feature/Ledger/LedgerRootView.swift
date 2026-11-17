@@ -56,7 +56,7 @@ struct LedgerListView: View {
                         ForEach(model.rows.filter { $0.occurredAt.localEpochDay == day }, id: \.id) { row in
                             Button { detail = row } label: {
                                 HStack(alignment: .top, spacing: 12) {
-                                    LedgerIcon(visual: model.categories.first { $0.id == row.categoryID }?.visual ?? LedgerVisual())
+                                    LedgerIcon(visual: model.categories.first { $0.id == row.categoryID }?.visual ?? LedgerVisual(), repository: model.services.visuals)
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(model.categoryName(row.categoryID)).foregroundStyle(.primary)
                                         Text(LedgerStyle.amount(row)).font(.headline).monospacedDigit().foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
@@ -68,6 +68,7 @@ struct LedgerListView: View {
                                 }
                             }
                             .accessibilityLabel("\(row.type == .expense ? "支出" : "收入")，\(LedgerStyle.amount(row))，\(model.categoryName(row.categoryID))，\(model.accountName(row.accountID))，\(row.note ?? "")")
+                            .accessibilityIdentifier("ledger.row.\(row.id)")
                             .swipeActions {
                                 if row.deletedAt == nil { Button("删除", role: .destructive) { Task { await model.delete(row) } } }
                                 else { Button("恢复") { Task { await model.restore(id: row.id) } }.tint(.green) }
@@ -166,6 +167,9 @@ struct LedgerDetailView: View {
         NavigationStack {
             List {
                 Section {
+                    if let visual = ledger.categories.first(where: { $0.id == row.categoryID })?.visual, let id = visual.backgroundAssetID {
+                        ManagedPicture(id: id, repository: ledger.services.visuals, focus: visual.backgroundFocus).frame(height: 160).clipShape(.rect(cornerRadius: 12))
+                    }
                     Text(LedgerStyle.amount(row)).font(.largeTitle).monospacedDigit().textSelection(.enabled)
                     LabeledContent("类型", value: row.type == .expense ? "支出" : "收入")
                     LabeledContent("分类", value: ledger.categoryName(row.categoryID))

@@ -1,4 +1,5 @@
 import Observation
+import Foundation
 
 /// Composition root; feature ViewModels receive individual Domain protocols, not SQL objects.
 @MainActor
@@ -11,7 +12,12 @@ final class AppContainer {
     private(set) var ledger: LedgerViewModel?
     var startupFailed = false
 
-    init(openDatabase: @escaping @Sendable () async throws -> AppDatabase = { try await AppDatabase.openDefault() }) {
+    init(openDatabase: @escaping @Sendable () async throws -> AppDatabase = {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--cost-ui-testing") { return try AppDatabase.inMemory() }
+        #endif
+        return try await AppDatabase.openDefault()
+    }) {
         self.openDatabase = openDatabase
     }
 
@@ -24,9 +30,21 @@ final class AppContainer {
             let database = try await openDatabase()
             let repositories = LedgerRepositories(database: database)
             self.repositories = repositories
+            var mediaRoot = try ManagedVisualStore.defaultRoot()
+            var draftSuite: String?
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--cost-ui-testing") {
+                let testID = UUID().uuidString
+                mediaRoot = FileManager.default.temporaryDirectory.appendingPathComponent("CostUITesting-\(testID)")
+                draftSuite = "cost-ui-testing-\(testID)"
+            }
+            #endif
+            let visuals = ManagedVisualStore(database: database, root: mediaRoot)
+            try await visuals.cleanup()
             ledger = LedgerViewModel(services: LedgerServices(currencies: repositories.currencies, categories: repositories.categories,
                 accounts: repositories.accounts, tags: repositories.tags, transactions: repositories.transactions,
-                funds: repositories.funds, drafts: PrivateEntryDraftStore()))
+                funds: repositories.funds, drafts: PrivateEntryDraftStore(suiteName: draftSuite),
+                visuals: visuals))
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.

@@ -61,12 +61,15 @@ def verify_project() -> None:
     require(settings["SWIFT_VERSION"] == "6.0", "Swift 6 is required")
     require(settings["SWIFT_STRICT_CONCURRENCY"] == "complete", "Strict concurrency is required")
     require(settings["CODE_SIGNING_ALLOWED"] == "NO", "Foundation must be unsigned")
-    require(set(project["packages"]) == {"GRDB"}, "GRDB must be the only app package")
+    require(set(project["packages"]) == {"GRDB", "libwebp"}, "Only GRDB and the explicitly approved WebP codec are allowed")
+    require(project["packages"]["libwebp"] == {
+        "url": "https://github.com/SDWebImage/libwebp-Xcode.git", "exactVersion": "1.6.0",
+    }, "Unexpected WebP dependency requirement")
     require(project["packages"]["GRDB"] == {
         "url": "https://github.com/groue/GRDB.swift", "from": "7.0.0",
     }, "Unexpected GRDB dependency requirement")
     targets = project["targets"]
-    require(set(targets) == {"Cost", "CostTests"}, "Expected App and hosted test targets")
+    require(set(targets) == {"Cost", "CostTests", "CostUITests"}, "Expected App, hosted and native UI test targets")
     require(targets["Cost"]["type"] == "application", "Cost must be an application")
     require(targets["CostTests"]["type"] == "bundle.unit-test", "Expected a unit-test bundle")
     for target in targets.values():
@@ -79,7 +82,7 @@ def verify_project() -> None:
     require("ASSETCATALOG_COMPILER_APPICON_NAME" in app_settings, "App icon selection must override the XcodeGen preset")
     if icon_name := app_settings["ASSETCATALOG_COMPILER_APPICON_NAME"]:
         require((ROOT / f"Cost/Resources/Assets.xcassets/{icon_name}.appiconset").is_dir(), "Selected AppIcon asset is missing")
-    require(targets["Cost"]["dependencies"] == [{"package": "GRDB", "product": "GRDB"}], "App must link GRDB")
+    require(targets["Cost"]["dependencies"] == [{"package": "GRDB", "product": "GRDB"}, {"package": "libwebp", "product": "libwebp"}], "App must link only approved dependencies")
     require({"target": "Cost"} in targets["CostTests"]["dependencies"], "Tests must depend on App")
     test_settings = targets["CostTests"]["settings"]["base"]
     require(test_settings["TEST_HOST"] == "$(BUILT_PRODUCTS_DIR)/Cost.app/Cost", "Wrong iPhone test host")
@@ -88,6 +91,8 @@ def verify_project() -> None:
         scheme = project["schemes"][scheme_name]
         require(set(scheme["build"]["targets"]) <= set(targets), "Unknown scheme build target")
         require(scheme["test"]["targets"] == ["CostTests"], "Scheme must run hosted tests")
+    require(targets["CostUITests"]["type"] == "bundle.ui-testing", "Expected UI testing bundle")
+    require(project["schemes"]["CostUITests"]["test"]["targets"] == ["CostUITests"], "UI scheme must run native UI tests")
     with (ROOT / targets["Cost"]["settings"]["base"]["INFOPLIST_FILE"]).open("rb") as stream:
         info = plistlib.load(stream)
     require(info["CFBundleIdentifier"] == "$(PRODUCT_BUNDLE_IDENTIFIER)", "Bundle identity must use build settings")
@@ -141,7 +146,7 @@ def verify_workflow() -> None:
     require(set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}, "Unexpected workflow triggers")
     require(workflow["permissions"] == {"contents": "read"}, "Build token must be read-only")
     job = workflow["jobs"]["build"]
-    require(job["runs-on"] == "macos-15" and job["timeout-minutes"] == 30, "Unexpected build runner/timeout")
+    require(job["runs-on"] == "macos-15" and job["timeout-minutes"] == 40, "Unexpected build runner/timeout")
     require("secrets." not in path.read_text(encoding="utf-8"), "Unsigned build must not require user secrets")
     # Parse the actual shell blocks; never execute macOS build commands on Windows.
     bash = Path("C:/Program Files/Git/bin/bash.exe") if sys.platform == "win32" else shutil.which("bash")

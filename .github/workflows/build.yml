@@ -21,7 +21,7 @@ defaults:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
       HOMEBREW_NO_AUTO_UPDATE: "1"
@@ -102,6 +102,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | tee build/logs/tests.log
 
+      - name: Run native UI semantic and interaction tests
+        timeout-minutes: 10
+        env:
+          SIMULATOR_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        run: |
+          xcodebuild test \
+            -project Cost.xcodeproj -scheme CostUITests \
+            -destination "$SIMULATOR_DESTINATION" \
+            -configuration Debug \
+            -derivedDataPath build/DerivedData-simulator \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            -parallel-testing-enabled NO \
+            -resultBundlePath build/results/CostUITests.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/logs/ui-tests.log
+
       - name: Archive for device without signing
         run: |
           xcodebuild archive \
@@ -145,6 +162,7 @@ jobs:
           path: |
             build/logs/
             build/results/CostTests.xcresult/
+            build/results/CostUITests.xcresult/
             build/Package.resolved
             build/dependency-resolution.json
             build/simulator.json

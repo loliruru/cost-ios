@@ -13,7 +13,8 @@ actor MemoryEntryDraftStore: EntryDraftStore {
 struct LedgerFeatureTests {
     func fixture() async throws -> LedgerViewModel {
         let repo = GRDBLedgerRepository(database: try AppDatabase.inMemory())
-        let services = LedgerServices(currencies: repo, categories: repo, accounts: repo, tags: repo, transactions: repo, funds: repo, drafts: MemoryEntryDraftStore())
+        let services = LedgerServices(currencies: repo, categories: repo, accounts: repo, tags: repo, transactions: repo, funds: repo, drafts: MemoryEntryDraftStore(),
+            visuals: ManagedVisualStore(database: repo.database, root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
         let vm = LedgerViewModel(services: services, environment: LedgerEnvironment(now: { 1_800_000_000_000 }, newID: { UUID().uuidString }, zoneID: { "Asia/Singapore" }))
         await vm.reload()
         return vm

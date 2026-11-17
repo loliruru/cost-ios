@@ -12,6 +12,9 @@ packages:
   GRDB:
     url: https://github.com/groue/GRDB.swift
     from: "7.0.0"
+  libwebp:
+    url: https://github.com/SDWebImage/libwebp-Xcode.git
+    exactVersion: "1.6.0"
 
 settings:
   base:
@@ -40,6 +43,8 @@ targets:
     dependencies:
       - package: GRDB
         product: GRDB
+      - package: libwebp
+        product: libwebp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost
@@ -70,7 +75,30 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Cost.app/Cost"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  CostUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: CostUITests
+    dependencies:
+      - target: Cost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_TARGET_NAME: Cost
+
 schemes:
+  CostUITests:
+    build:
+      targets:
+        Cost: all
+        CostUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - CostUITests
   Cost:
     build:
       targets:

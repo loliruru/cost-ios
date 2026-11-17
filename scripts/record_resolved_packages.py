@@ -9,14 +9,16 @@ def main() -> None:
     raw = source.read_bytes()
     resolved = json.loads(raw)
     pins = resolved["pins"]
-    if len(pins) != 1 or pins[0]["identity"].lower() not in {"grdb.swift", "grdb"}:
-        raise SystemExit("Expected GRDB as the only resolved application dependency")
-    pin = pins[0]
-    if not pin["state"]["version"].startswith("7."):
+    by_identity = {pin["identity"].lower(): pin for pin in pins}
+    if len(pins) != 2 or set(by_identity) != {"grdb.swift", "libwebp-xcode"}:
+        raise SystemExit("Expected only GRDB and the explicitly approved libwebp codec")
+    if not by_identity["grdb.swift"]["state"]["version"].startswith("7."):
         raise SystemExit("GRDB must resolve within the approved 7.x range")
+    if by_identity["libwebp-xcode"]["state"]["version"] != "1.6.0":
+        raise SystemExit("libwebp must resolve to the approved exact version 1.6.0")
     Path("build/Package.resolved").write_bytes(raw)
     evidence = {"packages": [{"identity": pin["identity"], "url": pin["location"],
-                              "version": pin["state"]["version"], "revision": pin["state"]["revision"]}]}
+                              "version": pin["state"]["version"], "revision": pin["state"]["revision"]} for pin in pins]}
     Path("build/dependency-resolution.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence))
 

@@ -12,8 +12,8 @@ struct AccountFundsRepositoryTests {
         }
         return repository
     }
-    func transfer(id: String = "transfer", principal: Int64 = 100_000, profit: Int64 = 0, withdrawal: Bool = false, updated: Int64 = 2000) throws -> AccountTransfer {
-        try AccountTransfer(id: id, requestKey: "request-\(id)", fromAccountID: withdrawal ? "invest" : "seed-default-account",
+    func transfer(id: String = "transfer", principal: Int64 = 100_000, profit: Int64 = 0, withdrawal: Bool = false, updated: Int64 = 2000, requestKey: String? = nil) throws -> AccountTransfer {
+        try AccountTransfer(id: id, requestKey: requestKey ?? "request-\(id)", fromAccountID: withdrawal ? "invest" : "seed-default-account",
             toAccountID: withdrawal ? "seed-default-account" : "invest", fromKind: withdrawal ? .investmentCost : .available,
             toKind: withdrawal ? .available : .investmentCost, currencyCode: CurrencyCode("CNY"), scale: 2,
             principalMinor: principal, profitMinor: profit,
@@ -91,5 +91,32 @@ struct AccountFundsRepositoryTests {
         await #expect(throws: LedgerError.storageConstraint) { _ = try await repository.saveTransfer(transfer(profit: 100, withdrawal: true), expectedUpdatedAt: nil) }
         #expect(try await repository.recentTransactions().isEmpty)
         #expect(try await repository.transfers().isEmpty)
+    }
+    @Test func concurrentRetriesCommitOneTransferAndOneProfit() async throws {
+        let repository = try await fixture()
+        let requests = try (0..<20).map { try transfer(id: "concurrent-\($0)", principal: 100, profit: 10, withdrawal: true, requestKey: "one-transfer") }
+        let ids = try await withThrowingTaskGroup(of: String.self) { group in
+            for row in requests { group.addTask { try await repository.saveTransfer(row, expectedUpdatedAt: nil).id } }
+            var ids = Set<String>()
+            for try await id in group { ids.insert(id) }
+            return ids
+        }
+        #expect(ids.count == 1)
+        #expect(try await repository.transfers().count == 1)
+        #expect(try await repository.recentTransactions().count == 1)
+        await #expect(throws: LedgerError.conflict) {
+            _ = try await repository.saveTransfer(transfer(id: "conflict", principal: 101, profit: 10, withdrawal: true, requestKey: "one-transfer"), expectedUpdatedAt: nil)
+        }
+    }
+    @Test func currencyMismatchIsAtomicAndUnvaluedEffectsAreReported() async throws {
+        let repository = try await fixture()
+        let usd = try AccountFundOpening(id: "usd", accountID: "seed-default-account", kind: .available, enabled: true,
+            currencyCode: CurrencyCode("USD"), scale: 2, amountMinor: 1000, startedAt: 1000, createdAt: 1000)
+        _ = try await repository.saveOpening(usd)
+        _ = try await repository.createTransaction(TestLedger.transaction(units: 1, occurred: 2000))
+        #expect(try await repository.positions().first { $0.accountID == "seed-default-account" }?.unvaluedCount == 1)
+        await #expect(throws: FundsError.currencyMismatch) { _ = try await repository.saveTransfer(transfer(profit: 10, withdrawal: true), expectedUpdatedAt: nil) }
+        #expect(try await repository.transfers().isEmpty)
+        #expect(try await repository.recentTransactions().count == 1)
     }
 }

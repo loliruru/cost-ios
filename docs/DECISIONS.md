@@ -61,3 +61,11 @@ XcodeGen target 预设会指定 AppIcon 和 iPhone/iPad 家族，project 级 fam
 首个 iOS 数据版本为 v1（v1_schema/v1_seed），保留 Android v10 的 18 实体、列/索引及运行时业务约束，附加严格 INTEGER/TEXT 类型 guard 和资金标量校验，不复制 Room 内部身份表。未知数据库、未来版本或未知迁移拒绝打开，永不使用 destructive migration。SQLite 金额汇率字段与 Domain 显式映射；异步 read/write、ValueObservation AsyncSequence 不引入 Combine。
 
 Android 通用库只初始化币种，用户 iOS 计划还要求默认分类/账户。采用非个人最小 seed（其他支出、其他收入、默认账户），不复制个人初始化 ID 或真实金额；insert-ignore、迁移一次，不覆盖用户选择。完整业务/受管图片/备份兼容仍按后续 Phase 实现，不把表存在当作功能完成。
+
+## ADR-011 — 用户批准最小 WebP 编码依赖
+
+2026-11-17 的 iOS 18.5 Simulator 实验 [run 44097781406](https://github.com/loliruru/cost-ios/actions/runs/44097781406) 实际记录 ImageIO 支持 WebP 解码、不提供 WebP encoder；2×2 PNG 编码/回读通过，WebP destination 创建失败。37 项测试、Build/Archive/IPA 通过，实验只生成合成图，不截图或读取用户图片。
+
+用户在本阶段明确选择“允许引入最小 WebP 编码依赖，保留原有交换格式”，例外放宽仅 GRDB 约束。采用 [SDWebImage/libwebp-Xcode 1.6.0](https://github.com/SDWebImage/libwebp-Xcode/tree/1.6.0)，以 project.yml exactVersion 固定；其 Package.swift 只有 libwebp C source target，没有其他 package 依赖，子模块指向 webmproject/libwebp。不引入 SDWebImage、Swift-WebP 或网络图片框架。BSD-3-Clause 许可证随 App 资源分发；CI 记录 wrapper 的实际 revision 并断言依赖树仅 GRDB + libwebp。
+
+编码仅在 Data 媒体适配层使用；ImageIO 检查尺寸、静态解码/方向校正与下采样，sRGB raw RGBA 去元数据、解除 alpha 预乘后调用 lossless WebP 编码。稳定 UUID 相对路径、kind/hash/processing version 去重；草稿 owner lease 与维护锁防止清理未提交文件；类别/账户引用在同一删除事务复核。完整备份容器与双向数据库交换仍属 Phase 8，本实验不代表完整备份已兼容。

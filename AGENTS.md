@@ -10,7 +10,7 @@
 ## 长期硬规则
 
 - iOS 工作仅在本独立仓库进行。`C:\Dev\Codex\Android\Cost` 是只读参考；绝不修改其代码、数据库、文档、Git 状态、设备安装或配置，不读取个人 CSV、数据库、密钥、配对或签名材料。
-- Swift 6、Strict Concurrency、iOS 18+、SwiftUI、Observation `@Observable`、MVVM + Domain/UseCase、GRDB。不得引入 Combine/ObservableObject、SwiftData 或额外第三方应用依赖。
+- Swift 6、Strict Concurrency、iOS 18+、SwiftUI、Observation `@Observable`、MVVM + Domain/UseCase、GRDB。不得引入 Combine/ObservableObject、SwiftData 或未经批准的第三方应用依赖。2026-11-17 用户明确例外允许最小 WebP 编码依赖：libwebp-Xcode 1.6.0，见 ADR-011；不包含 SDWebImage 等上层框架。
 - `project.yml` 是唯一工程与应用依赖配置来源；XcodeGen 生成的 `.xcodeproj` 不入库。无 Mac/Xcode 时只报告实际完成的静态验证，不能声称 Build/Test/IPA 通过。
 - **Phase 0 和 Phase 1 优先完成**；端到端构建链路未验证前，不开发业务功能。
 - 金额、汇率、市场价格、统计禁止使用 `Float` / `Double`。金额用正数 `Int64` minor units 和 `0...18` scale，精确解析、受控 rescale、溢出报错；换算使用 HALF_EVEN。Foundation Decimal 的中间结果精度必须单独验证。

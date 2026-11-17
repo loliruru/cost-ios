@@ -23,6 +23,8 @@ final class MetadataViewModel {
     var visual = LedgerVisual()
     var error: String?
     var isBusy = false
+    let mediaOwner = UUID().uuidString
+    @ObservationIgnored private var closed = false
     init(ledger: LedgerViewModel, kind: MetadataKind, recordID: String?) {
         self.ledger = ledger; self.kind = kind; self.recordID = recordID
         switch kind {
@@ -41,6 +43,25 @@ final class MetadataViewModel {
         }
     }
     var parents: [Category] { ledger.categories.filter { $0.id != recordID && $0.parentID == nil && $0.type == type && (!$0.isArchived || archived) } }
+    func beginImageImport() -> Bool {
+        guard !isBusy, !closed else { return false }; isBusy = true; return true
+    }
+    func imageImportFailed(_ failure: Error) { isBusy = false; error = LedgerMessage.text(failure) }
+    func importImage(file: URL, kind: VisualAssetKind) async {
+        defer { isBusy = false; try? FileManager.default.removeItem(at: file) }
+        guard !closed else { return }
+        do {
+            let asset = try await ledger.services.visuals.importImage(file: file, kind: kind, owner: mediaOwner)
+            if kind == .icon { visual.source = .image; visual.emoji = nil; visual.iconAssetID = asset.id }
+            else { visual.backgroundAssetID = asset.id }
+        } catch { self.error = LedgerMessage.text(error) }
+        if closed { await ledger.services.visuals.release(owner: mediaOwner); try? await ledger.services.visuals.cleanup() }
+    }
+    func close() async {
+        closed = true
+        await ledger.services.visuals.release(owner: mediaOwner)
+        try? await ledger.services.visuals.cleanup()
+    }
     func save() async -> Bool {
         guard !isBusy else { return false }; isBusy = true; defer { isBusy = false }
         do {

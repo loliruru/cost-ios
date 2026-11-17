@@ -9,13 +9,13 @@ struct MetadataListView: View {
             if kind == .category {
                 ForEach(ledger.categories, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
-                        HStack { LedgerIcon(visual: row.visual); Text((row.parentID == nil ? "" : "↳ ") + row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出")).font(.caption).foregroundStyle(.secondary) }
+                        HStack { LedgerIcon(visual: row.visual, repository: ledger.services.visuals); Text((row.parentID == nil ? "" : "↳ ") + row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出")).font(.caption).foregroundStyle(.secondary) }
                     }.foregroundStyle(.primary)
                 }
             } else if kind == .account {
                 ForEach(ledger.accounts, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
-                        HStack { LedgerIcon(visual: row.visual); Text(row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.isDefault ? "默认" : "")).font(.caption).foregroundStyle(.secondary) }
+                        HStack { LedgerIcon(visual: row.visual, repository: ledger.services.visuals); Text(row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.isDefault ? "默认" : "")).font(.caption).foregroundStyle(.secondary) }
                     }.foregroundStyle(.primary)
                 }
             } else {
@@ -69,6 +69,7 @@ struct MetadataEditorView: View {
                     Section("图标") {
                         Picker("来源", selection: $model.visual.source) {
                             Text("内置图标").tag(IconSource.builtIn); Text("Emoji").tag(IconSource.emoji)
+                            if model.visual.source == .image { Text("受管图片").tag(IconSource.image) }
                         }
                         if model.visual.source == .emoji {
                             TextField("单个 Emoji", text: Binding(get: { model.visual.emoji ?? "" }, set: { model.visual.emoji = $0 }))
@@ -77,8 +78,9 @@ struct MetadataEditorView: View {
                                 ForEach(LedgerStyle.iconKeys, id: \.self) { key in Label(key, systemImage: LedgerStyle.symbol(key)).tag(key) }
                             }
                         }
-                        LedgerIcon(visual: model.visual)
+                        LedgerIcon(visual: model.visual, repository: model.ledger.services.visuals)
                     }
+                    VisualPickerControls(model: model)
                 }
                 if model.recordID != nil && model.archived && model.kind != .account {
                     Section {
@@ -90,7 +92,7 @@ struct MetadataEditorView: View {
             }
             .navigationTitle((model.recordID == nil ? "新增" : "编辑") + model.kind.title)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(model.isBusy) }
                 ToolbarItem(placement: .confirmationAction) { Button("保存") {
                     if model.recordID != nil { confirmSave = true }
                     else { Task { if await model.save() { dismiss() } } }
@@ -107,6 +109,7 @@ struct MetadataEditorView: View {
                 if source == .emoji { model.visual.iconAssetID = nil; if model.visual.emoji == nil { model.visual.emoji = "" } }
             }
             .interactiveDismissDisabled(model.isBusy)
+            .onDisappear { Task { await model.close() } }
             .ledgerError($model.error)
         }
     }

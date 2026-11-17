@@ -9,10 +9,19 @@ struct LedgerServices: Sendable {
     let transactions: any TransactionRepository
     let funds: any AccountFundsRepository
     let drafts: any EntryDraftStore
+    let visuals: any ManagedVisualRepository
 }
 
 enum LedgerMessage {
     static func text(_ error: Error) -> String {
+        if let error = error as? VisualAssetError {
+            switch error {
+            case .sourceTooLarge: return "原图最多 16 MiB，处理后的图片最多 8 MiB。请选择较小的图片。"
+            case .dimensionsTooLarge: return "图片单边最多 16384 像素，总像素最多 4000 万。"
+            case .unsupportedImage: return "请选择受支持的静态图片；动画与无法识别的格式不支持。"
+            default: return "无法导入或读取图片。已有视觉与账本会保留，请重新选择。"
+            }
+        }
         if error is NumericError { return "请输入大于零的有效金额，小数位不能超过币种精度。金额超出范围时请减小金额。" }
         if let error = error as? FundsError {
             switch error {

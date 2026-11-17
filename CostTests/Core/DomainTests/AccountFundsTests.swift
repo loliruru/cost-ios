@@ -39,6 +39,16 @@ struct AccountFundsTests {
         value.add(units: 5, scale: 1, subtract: true)
         #expect(value.text == "-0.25")
     }
+    @Test func originalCurrencyPrecedesFrozenBaseAndMissingCurrencyIsExplicit() throws {
+        let row = try TestLedger.transaction(units: 100, code: "USD", rate: "7", baseUnits: 700, method: .manualRate)
+        let usd = try AccountFundOpening(id: "usd", accountID: row.accountID, kind: .available, enabled: true,
+            currencyCode: CurrencyCode("USD"), scale: 2, amountMinor: 1000, startedAt: 1000, createdAt: 1000)
+        #expect(AccountFundsCalculator.position(accountID: row.accountID, opening: usd, transactions: [row], transfers: []).amount?.text == "9.00")
+        let eur = try AccountFundOpening(id: "eur", accountID: row.accountID, kind: .available, enabled: true,
+            currencyCode: CurrencyCode("EUR"), scale: 2, amountMinor: 1000, startedAt: 1000, createdAt: 1000)
+        let incomplete = AccountFundsCalculator.position(accountID: row.accountID, opening: eur, transactions: [row], transfers: [])
+        #expect(incomplete.amount?.text == "10.00" && incomplete.unvaluedCount == 1)
+    }
     @Test func emojiIsOneSequenceAndTagUnicodeNormalizationIsStable() throws {
         for emoji in ["🍜", "👨‍👩‍👧‍👦", "🇸🇬", "1️⃣", "❤️"] { try LedgerVisual(source: .emoji, emoji: emoji).validate() }
         for emoji in ["", "hello", "🍜🍜", "1", "🏽"] { #expect(throws: (any Error).self) { try LedgerVisual(source: .emoji, emoji: emoji).validate() } }

@@ -20,9 +20,11 @@ enum LedgerStyle {
 
 struct LedgerIcon: View {
     let visual: LedgerVisual
+    var repository: (any ManagedVisualRepository)? = nil
     var body: some View {
         Group {
-            if visual.source == .emoji, let emoji = visual.emoji { Text(emoji) }
+            if visual.source == .image, let repository { ManagedPicture(id: visual.iconAssetID, repository: repository, icon: true).frame(width: 36, height: 36).clipShape(.rect(cornerRadius: 8)) }
+            else if visual.source == .emoji, let emoji = visual.emoji { Text(emoji) }
             else { Image(systemName: LedgerStyle.symbol(visual.iconKey)) }
         }
         .font(.title3).frame(minWidth: 36, minHeight: 44).accessibilityHidden(true)
