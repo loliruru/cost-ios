@@ -2,6 +2,8 @@
 
 状态：Phase 2 数据基础已完成并通过 macOS Build/Test；iOS schema v1 独立于 Android Room v10。实际结果见 [Phase 2](PHASE2_DATA_FOUNDATION.md)。来源：Android `CostDatabase.kt`、导出 `10.json`、Domain/DAO/备份代码与测试；快照见 [schema](reference/android-schema-v10.json)，文件摘要见[审计 manifest](reference/android-audit-manifest.json)。Room identity hash 为 `3be6bf322210390fb222f35c65d4a343`；iOS 不冒充此 Room identity。
 
+Phase 3 在原 v1 表上增加账单搜索、账户资金和受管视觉业务 Repository，没有修改冻结 schema/seed 或注册新 Migration。实际验证状态见 [Phase 3](PHASE3_CORE_LEDGER.md)。资金总额以项目内精确有符号十进制派生，可超过 Int64；媒体 processing_version=1，mime 为 image/webp，UUID 私有相对路径，原图仅短暂存在于私有临时 staging。
+
 ## 不变量与精确数值
 
 Money = `minorUnits: Int64`、`currencyCode: String`、`scale: Int`。交易金额为正数，方向由 income/expense 表达；scale 0...18。字符串输入只接受普通非负十进制数字形式（首尾空白可去掉），交易必须 >0；拒绝负号、指数、超出币种 scale 的小数与 Int64 溢出，不静默截断或经过 Double。即使额外小数位全为零也按 Android MoneyParser 的位数校验拒绝。不同币种不可相加，不同 scale 必须先显式精确 rescale；缩小 scale 需要舍入则失败，放大溢出则失败。

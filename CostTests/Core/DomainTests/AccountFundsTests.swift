@@ -54,4 +54,16 @@ struct AccountFundsTests {
         for emoji in ["", "hello", "🍜🍜", "1", "🏽"] { #expect(throws: (any Error).self) { try LedgerVisual(source: .emoji, emoji: emoji).validate() } }
         #expect(Tag.normalize("  ＦＯＯ\u{00A0} BAR\n") == "foo bar")
     }
+    @Test func transferZeroLossAndOverflowVectorsMatchAndroid() throws {
+        let vectors: [(Int64, Int64, Bool)] = [(0, 100, true), (0, 0, false), (100, -100, true),
+            (100, -101, false), (.max, 1, false), (.max, -.max, true), (1, .min, false)]
+        for (principal, profit, valid) in vectors {
+            let row = try AccountTransfer(id: "vector", requestKey: "vector", fromAccountID: "investment", toAccountID: "cash",
+                fromKind: .investmentCost, toKind: .available, currencyCode: CurrencyCode("CNY"), scale: 2,
+                principalMinor: principal, profitMinor: profit, profitCategoryID: profit == 0 ? nil : "profit-category", profitTransactionID: nil,
+                occurredAt: OccurredAt(epochMillis: 2000, zoneID: "UTC"), note: nil, createdAt: 2000, updatedAt: 2000)
+            if valid { try row.validate() }
+            else { #expect(throws: (any Error).self) { try row.validate() } }
+        }
+    }
 }

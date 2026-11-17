@@ -67,6 +67,8 @@ targets:
       - target: Cost
       - package: GRDB
         product: GRDB
+      - package: libwebp
+        product: libwebp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.cost.tests

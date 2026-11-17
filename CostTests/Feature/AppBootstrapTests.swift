@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import Cost
 
 private actor DatabaseFactoryFixture {
@@ -12,7 +13,7 @@ struct AppBootstrapTests {
     @Test @MainActor
     func databaseIsAssembledOnceAndInjectedAsDomainProtocols() async throws {
         let fixture = DatabaseFactoryFixture(try AppDatabase.inMemory())
-        let container = AppContainer(openDatabase: { await fixture.open() })
+        let container = AppContainer(mediaRoot: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), openDatabase: { await fixture.open() })
         await container.start()
         await container.start()
         #expect(container.isReady && !container.isLoading && !container.startupFailed)

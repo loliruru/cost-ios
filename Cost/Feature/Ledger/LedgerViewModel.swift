@@ -103,7 +103,7 @@ final class LedgerViewModel {
         guard !isBusy else { return }
         isBusy = true; defer { isBusy = false }
         do { try await work(); await reload() }
-        catch { error = LedgerMessage.text(error) }
+        catch { self.error = LedgerMessage.text(error) }
     }
     func delete(_ row: LedgerTransaction) async {
         await perform {

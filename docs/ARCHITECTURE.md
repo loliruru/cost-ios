@@ -1,10 +1,10 @@
 # Cost iOS 架构
 
-状态：Phase 2 数据基础已完成，macOS Build 与 36 项 hosted Swift tests 通过。已加入精确 Model、Repository 协议、GRDB/迁移/存储 mapper 和 App 依赖装配；尚无业务 UI、网络 Provider、主导航或后台任务。验证证据见 [Phase 2](PHASE2_DATA_FOUNDATION.md)。
+状态：Phase 2 数据基础已完成，macOS Build 与 36 项 hosted Swift tests 通过。Phase 3 已加入账单/设置原生导航、Observation ViewModel、录入/基础资料/可选资金及受管媒体源码，当前等待本阶段最终 CI 和真机验收，见 [Phase 3](PHASE3_CORE_LEDGER.md)。网络 Provider 与后台任务尚未实现。
 
 ## 技术与边界
 
-Swift 6 / Strict Concurrency，iOS 18+，SwiftUI + Observation `@Observable`，MVVM + Domain/UseCase，GRDB/SQLite，URLSession async/await，Swift Charts，Keychain Services，UserNotifications/BGTaskScheduler，Swift Testing + XCTest。GRDB 是唯一第三方应用依赖。不引入 SwiftData、Combine、第三方 HTTP/DI/图表库。
+Swift 6 / Strict Concurrency，iOS 18+，SwiftUI + Observation `@Observable`，MVVM + Domain/UseCase，GRDB/SQLite，URLSession async/await，Swift Charts，Keychain Services，UserNotifications/BGTaskScheduler，Swift Testing + XCTest。允许的应用依赖为 GRDB 和用户在 Phase 3 明确批准的独立 libwebp 1.6.0 编码库（ADR-011）。不引入 SwiftData、Combine、第三方 HTTP/DI/图表库。
 
 ```text
 Feature -> Core/Domain -> Core/Model
@@ -17,7 +17,7 @@ App -> 组装 Data 实现、Domain 协议与 Feature
 
 ## Composition root 与状态流
 
-`CostApp` 为入口，持有 `@MainActor @Observable AppContainer`。启动时异步打开私有数据库并组装各个 Domain Repository 协议，防止重复初始化；持久化失败不报告 ready，也不向用户输出 SQL/金额或原始异常。正常页面继续只显示 Cost。后续 Feature 通过构造参数接收所需协议；Provider、Clock、IANA zone、ID 生成器、文件存储和后台协调器也由 App 组装，不在 Domain 访问全局 Service Locator。
+`CostApp` 为入口，持有 `@MainActor @Observable AppContainer`。启动时异步打开私有数据库并组装各个 Domain Repository 协议，防止重复初始化；持久化失败不报告 ready，也不向用户输出 SQL/金额或原始异常。正常页面显示本阶段账单/设置导航；Feature 通过构造参数接收所需协议。Clock、IANA zone、ID 生成器和受管文件存储也由 App 组装，不在 Domain 访问全局 Service Locator。
 
 Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送明确事件；ViewModel 验证展示输入，调用 UseCase/协议，将结果映射为可展示状态。导航只传稳定 ID。输入文本、选区、IME composition 保留在合适的 UI 编辑状态，异步结果不能覆盖更新的输入；保存时捕获不可变草稿。幂等键随草稿恢复，不重放无键写入。
 
@@ -51,7 +51,7 @@ BGAppRefreshTask 为尽力触发器，UserNotifications 只提醒；真正生成
 
 NavigationStack、TabView、Sheets 负责系统导航，路由/草稿恢复和系统交互在 Feature/App。Glass 的可用性、材质、系统可访问性与触觉策略集中 DesignSystem，Feature 不散落平台判断。
 
-媒体通过 PhotosPicker/系统文件选择器进入 Data 受管存储，有界读取、去 EXIF、下采样、静态副本、稳定 ID/hash 和相对路径；staging → 文件发布 → 引用事务，失败补偿，零引用才回收。WebP 跨平台读写限制是未解决工程边界，见[决策](DECISIONS.md)。
+媒体通过 PhotosPicker 进入 Data 受管存储，有界读取、去 EXIF、方向校正、下采样、静态 WebP 副本、稳定 ID/hash 和相对路径；staging → 文件发布 → 引用事务，失败补偿，零引用才回收。owner lease 保护未保存编辑器，维护锁跨数据库 await 保持导入/清理串行。WebP 编码采用用户批准的最小依赖，见[决策](DECISIONS.md) ADR-011；完整备份交换仍待 Phase 8。
 
 ## 工程与测试
 

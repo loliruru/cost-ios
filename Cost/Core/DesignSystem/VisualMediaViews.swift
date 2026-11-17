@@ -52,4 +52,3 @@ struct ManagedPicture: View {
         .accessibilityHidden(true)
     }
 }
-
