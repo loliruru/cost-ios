@@ -8,11 +8,12 @@ struct LedgerRepositories: Sendable {
     let transactions: any TransactionRepository
     let fiatQuotes: any FiatQuoteRepository
     let marketQuotes: any MarketQuoteRepository
+    let funds: any AccountFundsRepository
 
     init(database: AppDatabase) {
         let repository = GRDBLedgerRepository(database: database)
         currencies = repository; categories = repository; accounts = repository; tags = repository
-        transactions = repository; fiatQuotes = repository; marketQuotes = repository
+        transactions = repository; fiatQuotes = repository; marketQuotes = repository; funds = repository
     }
 }
 
@@ -20,12 +21,12 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
                              TransactionRepository, FiatQuoteRepository, MarketQuoteRepository {
     let database: AppDatabase
 
-    private func read<T: Sendable>(_ operation: @escaping @Sendable (Database) throws -> T) async throws -> T {
+    func read<T: Sendable>(_ operation: @escaping @Sendable (Database) throws -> T) async throws -> T {
         do { return try await database.writer.read(operation) }
         catch let error as DatabaseError { throw Self.storageError(error) }
     }
 
-    private func write<T: Sendable>(_ operation: @escaping @Sendable (Database) throws -> T) async throws -> T {
+    func write<T: Sendable>(_ operation: @escaping @Sendable (Database) throws -> T) async throws -> T {
         do { return try await database.writer.write(operation) }
         catch let error as DatabaseError { throw Self.storageError(error) }
     }
@@ -68,6 +69,12 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
             if let old = try CategoryRecord.fetchOne(db, key: category.id) {
                 guard old.created_at_epoch_millis == category.createdAt, category.updatedAt >= old.updated_at_epoch_millis else {
                     throw LedgerError.conflict
+                }
+                if old.transaction_type != category.type.rawValue {
+                    for table in ["transactions", "quick_templates", "recurring_rules"] {
+                        if try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM \(table) WHERE category_id = ?)", arguments: [category.id]) == true { throw LedgerError.invalidHierarchy }
+                    }
+                    if try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM account_transfers WHERE profit_category_id = ?)", arguments: [category.id]) == true { throw LedgerError.invalidHierarchy }
                 }
             }
             if let parent = category.parentID {
@@ -176,7 +183,7 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
         }
     }
 
-    private static func load(_ db: Database, sql: String, arguments: StatementArguments) throws -> [LedgerTransaction] {
+    static func load(_ db: Database, sql: String, arguments: StatementArguments) throws -> [LedgerTransaction] {
         let rows = try TransactionRecord.fetchAll(db, sql: sql, arguments: arguments)
         guard !rows.isEmpty else { return [] }
         let placeholders = Array(repeating: "?", count: rows.count).joined(separator: ",")
@@ -187,7 +194,7 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
         return try rows.map { try $0.model(tagIDs: tags[$0.id, default: []]) }
     }
 
-    private static func find(_ db: Database, id: String) throws -> LedgerTransaction? {
+    static func find(_ db: Database, id: String) throws -> LedgerTransaction? {
         try load(db, sql: "SELECT * FROM transactions WHERE id = ?", arguments: [id]).first
     }
     private static func checkManaged(_ db: Database, id: String) throws {
@@ -211,6 +218,16 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
         }
     }
 
+    private static func validateActiveReferences(_ db: Database, transaction: LedgerTransaction, previous: LedgerTransaction? = nil) throws {
+        guard let category = try CategoryRecord.fetchOne(db, key: transaction.categoryID),
+              category.is_archived == 0 || previous?.categoryID == transaction.categoryID,
+              let account = try AccountRecord.fetchOne(db, key: transaction.accountID),
+              account.is_archived == 0 || previous?.accountID == transaction.accountID else { throw LedgerError.invalidField("archivedReference") }
+        for id in transaction.tagIDs.subtracting(previous?.tagIDs ?? []) {
+            if let tag = try TagRecord.fetchOne(db, key: id), tag.is_archived != 0 { throw LedgerError.invalidField("archivedTag") }
+        }
+    }
+
     func createTransaction(_ transaction: LedgerTransaction) async throws -> LedgerTransaction {
         try transaction.validate()
         return try await write { db in
@@ -223,6 +240,7 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
                 return existing
             }
             try Self.validateCurrencies(db, transaction: transaction)
+            try Self.validateActiveReferences(db, transaction: transaction)
             try TransactionRecord(transaction).insert(db)
             try Self.replaceTags(db, transaction: transaction)
             return transaction
@@ -239,6 +257,7 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
                   transaction.source == old.source, transaction.sourceID == old.sourceID,
                   transaction.deletedAt == old.deletedAt else { throw LedgerError.conflict }
             try Self.validateCurrencies(db, transaction: transaction)
+            try Self.validateActiveReferences(db, transaction: transaction, previous: old)
             try TransactionRecord(transaction).update(db)
             try Self.replaceTags(db, transaction: transaction)
             return true

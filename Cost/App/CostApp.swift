@@ -7,7 +7,10 @@ struct CostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Text("Cost")
+            Group {
+                if let ledger = container.ledger { LedgerRootView(model: ledger) }
+                else { ProgressView("Cost") }
+            }
                 .environment(container)
                 .task { await container.start() }
                 .alert("无法打开本地数据", isPresented: $container.startupFailed) {

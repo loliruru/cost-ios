@@ -30,6 +30,8 @@ protocol TagRepository: Sendable {
 }
 
 protocol TransactionRepository: Sendable {
+    func searchTransactions(_ query: LedgerQuery) async throws -> LedgerPage
+    func isManagedTransaction(id: String) async throws -> Bool
     /// The serialized transaction boundary returns an existing request instead of writing twice.
     func createTransaction(_ transaction: LedgerTransaction) async throws -> LedgerTransaction
     func updateTransaction(_ transaction: LedgerTransaction, expectedUpdatedAt: Int64) async throws -> Bool

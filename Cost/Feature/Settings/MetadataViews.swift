@@ -1,0 +1,113 @@
+import SwiftUI
+
+struct MetadataListView: View {
+    @Bindable var ledger: LedgerViewModel
+    let kind: MetadataKind
+    @State private var route: MetadataRoute?
+    var body: some View {
+        List {
+            if kind == .category {
+                ForEach(ledger.categories, id: \.id) { row in
+                    Button { route = MetadataRoute(recordID: row.id) } label: {
+                        HStack { LedgerIcon(visual: row.visual); Text((row.parentID == nil ? "" : "↳ ") + row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出")).font(.caption).foregroundStyle(.secondary) }
+                    }.foregroundStyle(.primary)
+                }
+            } else if kind == .account {
+                ForEach(ledger.accounts, id: \.id) { row in
+                    Button { route = MetadataRoute(recordID: row.id) } label: {
+                        HStack { LedgerIcon(visual: row.visual); Text(row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.isDefault ? "默认" : "")).font(.caption).foregroundStyle(.secondary) }
+                    }.foregroundStyle(.primary)
+                }
+            } else {
+                ForEach(ledger.tags, id: \.id) { row in
+                    Button { route = MetadataRoute(recordID: row.id) } label: {
+                        HStack { Text(row.name); Spacer(); if row.isArchived { Text("已停用").foregroundStyle(.secondary) } }
+                    }.foregroundStyle(.primary)
+                }
+            }
+        }
+        .navigationTitle(kind.title)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("新增\(kind.title)", systemImage: "plus") { route = MetadataRoute(recordID: nil) } } }
+        .sheet(item: $route) { route in MetadataEditorView(ledger: ledger, kind: kind, recordID: route.recordID) }
+        .refreshable { await ledger.reload() }
+    }
+}
+
+struct MetadataEditorView: View {
+    @State private var model: MetadataViewModel
+    @State private var confirmSave = false
+    @State private var confirmDelete = false
+    @Environment(\.dismiss) private var dismiss
+    init(ledger: LedgerViewModel, kind: MetadataKind, recordID: String?) {
+        _model = State(initialValue: MetadataViewModel(ledger: ledger, kind: kind, recordID: recordID))
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("名称", text: $model.name)
+                    if model.kind != .tag { TextField("排序（小的在前）", text: $model.order).keyboardType(.numbersAndPunctuation) }
+                    if model.kind == .category {
+                        Picker("收支", selection: $model.type) { Text("支出").tag(TransactionType.expense); Text("收入").tag(TransactionType.income) }
+                        Picker("父分类", selection: $model.parentID) {
+                            Text("无（一级分类）").tag("")
+                            ForEach(model.parents, id: \.id) { Text($0.name).tag($0.id) }
+                        }
+                    }
+                    if model.kind == .account {
+                        Picker("可选币种", selection: $model.currency) {
+                            Text("不指定").tag("")
+                            ForEach(model.ledger.currencies, id: \.code) { Text($0.code.rawValue).tag($0.code.rawValue) }
+                        }
+                        Toggle("默认账户", isOn: $model.isDefault).disabled(model.archived)
+                        Text("账户币种不限制普通账单的原币种。").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Toggle("停用", isOn: $model.archived)
+                    if model.kind == .category { Text("停用父分类会同时停用子分类；恢复子项前请先恢复父分类。").font(.footnote).foregroundStyle(.secondary) }
+                }
+                if model.kind != .tag {
+                    Section("图标") {
+                        Picker("来源", selection: $model.visual.source) {
+                            Text("内置图标").tag(IconSource.builtIn); Text("Emoji").tag(IconSource.emoji)
+                        }
+                        if model.visual.source == .emoji {
+                            TextField("单个 Emoji", text: Binding(get: { model.visual.emoji ?? "" }, set: { model.visual.emoji = $0 }))
+                        } else {
+                            Picker("内置图标", selection: $model.visual.iconKey) {
+                                ForEach(LedgerStyle.iconKeys, id: \.self) { key in Label(key, systemImage: LedgerStyle.symbol(key)).tag(key) }
+                            }
+                        }
+                        LedgerIcon(visual: model.visual)
+                    }
+                }
+                if model.recordID != nil && model.archived && model.kind != .account {
+                    Section {
+                        Button("永久删除\(model.kind.title)", role: .destructive) { confirmDelete = true }
+                    } footer: {
+                        Text(model.kind == .tag ? "将移除该标签的账单、模板、循环关联，保留宿主记录和金额。" : "仅无子分类且无任何历史引用的已停用分类可以删除。")
+                    }
+                }
+            }
+            .navigationTitle((model.recordID == nil ? "新增" : "编辑") + model.kind.title)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") {
+                    if model.recordID != nil { confirmSave = true }
+                    else { Task { if await model.save() { dismiss() } } }
+                }.disabled(model.isBusy || model.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+            }
+            .confirmationDialog("名称和视觉修改会影响历史显示，金额与冻结估值保持不变。", isPresented: $confirmSave, titleVisibility: .visible) {
+                Button("保存修改") { Task { if await model.save() { dismiss() } } }
+            }
+            .confirmationDialog("确认永久删除？此操作不可撤销。", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("永久删除", role: .destructive) { Task { if await model.delete() { dismiss() } } }
+            }
+            .onChange(of: model.visual.source) { _, source in
+                if source == .builtIn { model.visual.emoji = nil; model.visual.iconAssetID = nil }
+                if source == .emoji { model.visual.iconAssetID = nil; if model.visual.emoji == nil { model.visual.emoji = "" } }
+            }
+            .interactiveDismissDisabled(model.isBusy)
+            .ledgerError($model.error)
+        }
+    }
+}

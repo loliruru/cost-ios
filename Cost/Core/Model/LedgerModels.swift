@@ -46,7 +46,9 @@ struct LedgerVisual: Equatable, Sendable {
             guard emoji == nil && iconAssetID == nil else { throw LedgerError.invalidField("visual") }
         case .emoji:
             guard let emoji, iconAssetID == nil else { throw LedgerError.invalidField("visual") }
-            try requireText(emoji, "emoji")
+            guard emoji.count == 1, emoji.unicodeScalars.contains(where: { $0.properties.isEmojiPresentation || $0.value == 0xFE0F || $0.value == 0x20E3 }),
+                  !emoji.unicodeScalars.allSatisfy({ (0x1F3FB...0x1F3FF).contains($0.value) })
+            else { throw LedgerError.invalidField("emoji") }
         case .image:
             guard let iconAssetID, emoji == nil else { throw LedgerError.invalidField("visual") }
             try requireText(iconAssetID, "iconAssetID")

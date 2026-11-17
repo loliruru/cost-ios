@@ -9,7 +9,7 @@
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
-| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 未开始 |
+| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 进行中（2026-11-17 获批；实现/验证中，图片格式门禁与真机验收待完成） |
 | 4 | 快捷模板 | 未开始 |
 | 5 | 周期记账 | 未开始 |
 | 6 | 统计与异常 | 未开始 |
@@ -62,6 +62,8 @@ Money/DecimalRate、GRDB 初始化/WAL/显式 Migration、Android v10 语义的 
 实际结果（2026-11-16）：[run 43886521271](https://github.com/loliruru/cost-ios/actions/runs/43886521271) 全 green，验证代码提交为 `05ebe9461e78308485c745009d199ec8f5d9ca55`。36 项 hosted Swift tests（含 264 组独立精度向量）、Simulator Build、unsigned device Archive/IPA 均通过；下载后的 Payload/架构/版本/未签名状态和 SHA-256 与 CI 一致。18 表、62 guard、seed/类型/FK/层边界及 Android 53 文件只读基线检查通过。首次测试编译的 throws 标注问题已修复并重跑。实现、产物、限制见 [Phase 2 数据基础](PHASE2_DATA_FOUNDATION.md)。本阶段无主观视觉验收项，完成后停止，Phase 3 未开始。
 
 ## Phase 3 — 核心账单与基础资料
+
+2026-11-17 用户明确批准开始。实现与未完成门禁见 [Phase 3 记录](PHASE3_CORE_LEDGER.md)。在本阶段全部验证和真机视觉验收通过前不标完成；不得进入 Phase 4。
 
 分类两级/排序/停用与受引用删除保护；账户默认/停用；标签规范化复用/确认删除；受管 emoji/图片/背景与引用清理；账单列表/搜索/筛选、快速录入、详情/编辑、删除/撤销、原生主 TabView。先实现本币与完整 identity 快照，联网估值仍待 Phase 7；不可写不完整外币账单。
 

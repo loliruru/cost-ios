@@ -8,6 +8,7 @@ final class AppContainer {
     @ObservationIgnored private(set) var repositories: LedgerRepositories?
     private(set) var isLoading = false
     private(set) var isReady = false
+    private(set) var ledger: LedgerViewModel?
     var startupFailed = false
 
     init(openDatabase: @escaping @Sendable () async throws -> AppDatabase = { try await AppDatabase.openDefault() }) {
@@ -21,11 +22,16 @@ final class AppContainer {
         defer { isLoading = false }
         do {
             let database = try await openDatabase()
-            repositories = LedgerRepositories(database: database)
+            let repositories = LedgerRepositories(database: database)
+            self.repositories = repositories
+            ledger = LedgerViewModel(services: LedgerServices(currencies: repositories.currencies, categories: repositories.categories,
+                accounts: repositories.accounts, tags: repositories.tags, transactions: repositories.transactions,
+                funds: repositories.funds, drafts: PrivateEntryDraftStore()))
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.
             repositories = nil
+            ledger = nil
             startupFailed = true
         }
     }
