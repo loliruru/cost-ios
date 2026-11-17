@@ -5,31 +5,42 @@ struct LedgerRootView: View {
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         TabView {
-            Tab("账单", systemImage: "list.bullet.rectangle") { LedgerListView(model: model) }
-            Tab("设置", systemImage: "gearshape") {
-                NavigationStack {
-                    List {
-                        Section("基础资料") {
-                            NavigationLink("分类", systemImage: "square.grid.2x2") { MetadataListView(ledger: model, kind: .category) }
-                            NavigationLink("账户", systemImage: "wallet.bifold") { MetadataListView(ledger: model, kind: .account) }
-                            NavigationLink("标签", systemImage: "tag") { MetadataListView(ledger: model, kind: .tag) }
-                        }
-                        Section("可选账户资金") {
-                            NavigationLink("资金起点与本金转账", systemImage: "arrow.left.arrow.right") { FundsListView(ledger: model) }
-                            Text("资金追踪默认关闭。未设置金额与零余额有区别。开启或校准只从保存时点开始计算。").font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Section("当前版本") {
-                            LabeledContent("本位币", value: "CNY")
-                            Text("支持离线本币记账。多币种估值、模板、循环与统计按后续阶段提供。")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }.navigationTitle("设置")
-                }
-            }
+            LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
+            LedgerSettingsView(model: model).tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.reload() } } }
         .ledgerError($model.error)
+    }
+}
+
+struct LedgerSettingsView: View {
+    @Bindable var model: LedgerViewModel
+    var body: some View {
+        NavigationStack {
+            List {
+                metadataSection
+                fundsSection
+                Section("当前版本") {
+                    LabeledContent("本位币", value: "CNY")
+                    Text("支持离线本币记账。多币种估值、模板、循环与统计按后续阶段提供。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }.navigationTitle("设置")
+        }
+    }
+    private var metadataSection: some View {
+        Section("基础资料") {
+            NavigationLink { MetadataListView(ledger: model, kind: .category) } label: { Label("分类", systemImage: "square.grid.2x2") }
+            NavigationLink { MetadataListView(ledger: model, kind: .account) } label: { Label("账户", systemImage: "wallet.bifold") }
+            NavigationLink { MetadataListView(ledger: model, kind: .tag) } label: { Label("标签", systemImage: "tag") }
+        }
+    }
+    private var fundsSection: some View {
+        Section("可选账户资金") {
+            NavigationLink { FundsListView(ledger: model) } label: { Label("资金起点与本金转账", systemImage: "arrow.left.arrow.right") }
+            Text("资金追踪默认关闭。未设置金额与零余额有区别。开启或校准只从保存时点开始计算。").font(.footnote).foregroundStyle(.secondary)
+        }
     }
 }
 
