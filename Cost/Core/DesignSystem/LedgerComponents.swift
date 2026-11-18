@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum LedgerStyle {
-    static let iconKeys = ["tag", "cart", "fork.knife", "car", "house", "heart", "creditcard", "banknote", "briefcase", "gift", "airplane", "wallet"]
+    static let iconKeys = ["tag", "cart", "fork.knife", "car", "house", "heart", "creditcard", "banknote", "briefcase", "gift", "airplane", "wallet", "receipt"]
     static func symbol(_ key: String) -> String {
         if key == "wallet" { return "wallet.bifold" }
         return iconKeys.contains(key) ? key : "circle.grid.2x2"

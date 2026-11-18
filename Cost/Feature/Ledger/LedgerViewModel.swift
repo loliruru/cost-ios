@@ -10,10 +10,21 @@ struct LedgerServices: Sendable {
     let funds: any AccountFundsRepository
     let drafts: any EntryDraftStore
     let visuals: any ManagedVisualRepository
+    let templates: any QuickTemplateRepository
 }
 
 enum LedgerMessage {
     static func text(_ error: Error) -> String {
+        if let error = error as? QuickTemplateError {
+            switch error {
+            case .unavailable: return "模板已停用或删除。"
+            case .categoryUnavailable: return "模板分类不可用或收支类型不匹配，请编辑模板后重试。"
+            case .accountUnavailable: return "模板账户已停用或不可用，请编辑模板后重试。"
+            case .tagUnavailable: return "模板有已停用或不可用的标签，请编辑模板后重试。"
+            case .currencyUnavailable: return "请选择已启用的法币。"
+            case .usageOverflow: return "模板使用次数已达上限，账单未保存。"
+            }
+        }
         if let error = error as? VisualAssetError {
             switch error {
             case .sourceTooLarge: return "原图最多 16 MiB，处理后的图片最多 8 MiB。请选择较小的图片。"
@@ -41,6 +52,8 @@ enum LedgerMessage {
         case .invalidHierarchy: return "分类最多两级，父子收支类型必须相同。恢复子分类前请先恢复父分类。"
         case .invalidSnapshot: return "当前阶段仅支持本币记账，外币估值将在多币种阶段提供。草稿已保留。"
         case .invalidCurrencyType: return "请选择已启用法币。"
+        case .invalidField("templateOrder"): return "排序请输入整数，或留空使用原有顺序。"
+        case .invalidField("templateInput"): return "请填写模板名称和金额，并检查输入长度。"
         case .invalidField: return "请检查必填项、单个 emoji、停用状态及输入长度。"
         default: return "操作未完成，已有账本与草稿会保留。请重试。"
         }

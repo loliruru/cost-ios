@@ -16,20 +16,22 @@ struct LedgerQuery: Equatable, Sendable {
 struct LedgerPage: Sendable { let rows: [LedgerTransaction]; let next: LedgerCursor? }
 
 struct EntryDraft: Codable, Equatable, Sendable {
+    static let defaultBaseCurrencyCode = "CNY"
     var id: String
     var requestKey: String
     var amount = ""
     var typeRaw = TransactionType.expense.rawValue
     var categoryID = ""
     var accountID = ""
-    var currencyCode = "CNY"
-    var baseCurrencyCode = "CNY"
+    var currencyCode = EntryDraft.defaultBaseCurrencyCode
+    var baseCurrencyCode = EntryDraft.defaultBaseCurrencyCode
     var baseScale = 2
     var occurredMillis: Int64
     var zoneID: String
     var note = ""
     var tagIDs: Set<String> = []
     var editingUpdatedAt: Int64?
+    var sourceTemplateID: String?
     var type: TransactionType {
         get { TransactionType(rawValue: typeRaw) ?? .expense }
         set { typeRaw = newValue.rawValue }
@@ -66,11 +68,12 @@ struct SaveEntryUseCase: Sendable {
         let timestamp = try environment.timestamp(after: existing?.updatedAt)
         let row = try LedgerTransaction(id: existing?.id ?? draft.id, type: draft.type,
             original: money, convertedBase: money,
-            exchangeRate: ExchangeRateSnapshot(rate: DecimalRate("1"), providerID: "IDENTITY", dataTimestamp: nil, fetchedAt: nil, method: .identity),
+            exchangeRate: .identity(),
             categoryID: draft.categoryID, accountID: draft.accountID,
             occurredAt: OccurredAt(epochMillis: draft.occurredMillis, zoneID: draft.zoneID),
             note: draft.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : draft.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            source: existing?.source ?? .manual, sourceID: existing?.sourceID,
+            source: existing?.source ?? (draft.sourceTemplateID == nil ? .manual : .template),
+            sourceID: existing == nil ? draft.sourceTemplateID : existing?.sourceID,
             requestKey: existing == nil ? draft.requestKey : existing!.requestKey, createdAt: existing?.createdAt ?? timestamp,
             updatedAt: timestamp, tagIDs: draft.tagIDs)
         if let existing {

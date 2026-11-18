@@ -73,4 +73,43 @@ final class LedgerUITests: XCTestCase {
         XCTAssertEqual(order.value as? String, "10")
         XCTAssertTrue(label.isHittable)
     }
+
+    @MainActor
+    func testTemplateQuickRecordAndUndoFromTemplatesTab() {
+        let app = launch()
+        app.tabBars.buttons["模板"].tap()
+        let addTemplate = app.buttons["template.add"]
+        XCTAssertTrue(addTemplate.waitForExistence(timeout: 10))
+        addTemplate.tap()
+
+        let name = app.textFields["template.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("Lunch template")
+        let amount = app.textFields["template.amount"]
+        if !amount.isHittable { app.swipeUp() }
+        XCTAssertTrue(amount.isHittable)
+        amount.tap()
+        amount.typeText("12.34")
+        app.buttons["template.save"].tap()
+
+        let record = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'template.record.'")).firstMatch
+        XCTAssertTrue(record.waitForExistence(timeout: 10))
+        record.doubleTap()
+        let undo = app.buttons["template.undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 10))
+
+        app.tabBars.buttons["账单"].tap()
+        let bills = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.'"))
+        XCTAssertTrue(bills.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertEqual(bills.count, 1)
+        XCTAssertTrue(bills.firstMatch.label.contains("12.34"))
+
+        app.tabBars.buttons["模板"].tap()
+        undo.tap()
+        XCTAssertTrue(app.staticTexts["已撤销记账"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["账单"].tap()
+        XCTAssertTrue(app.staticTexts["暂无账单"].waitForExistence(timeout: 10))
+        XCTAssertEqual(bills.count, 0)
+    }
 }

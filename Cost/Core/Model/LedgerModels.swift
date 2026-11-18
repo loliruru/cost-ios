@@ -158,6 +158,9 @@ struct OccurredAt: Equatable, Sendable {
 }
 
 struct ExchangeRateSnapshot: Equatable, Sendable {
+    static func identity() throws -> Self {
+        try Self(rate: DecimalRate("1"), providerID: "IDENTITY", dataTimestamp: nil, fetchedAt: nil, method: .identity)
+    }
     let rate: DecimalRate
     let providerID: String
     let dataTimestamp: Int64?

@@ -6,6 +6,7 @@ struct LedgerRootView: View {
     var body: some View {
         TabView {
             LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
+            QuickTemplatesView(ledger: model).tabItem { Label("模板", systemImage: "square.on.square") }
             LedgerSettingsView(model: model).tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }
@@ -23,7 +24,7 @@ struct LedgerSettingsView: View {
                 fundsSection
                 Section("当前版本") {
                     LabeledContent("本位币", value: "CNY")
-                    Text("支持离线本币记账。多币种估值、模板、循环与统计按后续阶段提供。")
+                    Text("支持离线本币记账和快捷模板。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }.navigationTitle("设置")

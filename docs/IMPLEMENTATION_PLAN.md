@@ -10,7 +10,7 @@
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
-| 4 | 快捷模板 | 未开始 |
+| 4 | 快捷模板 | 已实现，等待本阶段 CI |
 | 5 | 周期记账 | 未开始 |
 | 6 | 统计与异常 | 未开始 |
 | 7 | Fiat FX 与 Crypto 基础 | 未开始 |
@@ -80,6 +80,8 @@ build 4 修复分类与账户排序标签的可见性。[Intel 验证](https://g
 Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑后保存；模板不保存当次估值，引用停用时明确失败。撤销一键记账原子回退 transaction/usage/lastUsed。网络 FX 依赖 Phase 7，当前没有完整估值则保留草稿，不能伪称外币自动保存可用。
 
 验收：并发 request key 防重、usage 只增一次、撤销/失败回滚、稳定四级排序、删除保留历史交易、编辑不回写模板；Build+Test 后独立提交停止。
+
+实现与验收详见 [Phase 4 记录](PHASE4_QUICK_TEMPLATES.md)。
 
 ## Phase 5 — 周期记账
 

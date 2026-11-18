@@ -7,10 +7,11 @@ struct EntryView: View {
     @State private var newTag = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    init(ledger: LedgerViewModel, existing: LedgerTransaction? = nil) {
+    init(ledger: LedgerViewModel, existing: LedgerTransaction? = nil, prefilled: EntryDraft? = nil) {
         self.ledger = ledger
         _model = State(initialValue: EntryViewModel(services: ledger.services, categories: ledger.categories,
-            accounts: ledger.accounts, environment: ledger.environment, existing: existing))
+            accounts: ledger.accounts, environment: ledger.environment, existing: existing, prefilled: prefilled))
+        _more = State(initialValue: prefilled.map { $0.currencyCode != $0.baseCurrencyCode } ?? false)
     }
     private var date: Binding<Date> {
         Binding(get: { Date(timeIntervalSince1970: TimeInterval(model.draft.occurredMillis) / 1000) },
@@ -56,7 +57,7 @@ struct EntryView: View {
                     }
                 }
             }
-            .navigationTitle(model.existing == nil ? "记一笔" : "编辑账单")
+            .navigationTitle(model.existing != nil ? "编辑账单" : (model.draft.sourceTemplateID == nil ? "记一笔" : "从模板记账"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("关闭") { Task { await model.persist(); dismiss() } } }
                 ToolbarItem(placement: .confirmationAction) {

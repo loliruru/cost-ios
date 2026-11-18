@@ -16,9 +16,10 @@ final class EntryViewModel {
     @ObservationIgnored private var pendingDraft: EntryDraft?
     @ObservationIgnored private var finished = false
 
-    init(services: LedgerServices, categories: [Category], accounts: [Account], environment: LedgerEnvironment, existing: LedgerTransaction? = nil) {
+    init(services: LedgerServices, categories: [Category], accounts: [Account], environment: LedgerEnvironment,
+         existing: LedgerTransaction? = nil, prefilled: EntryDraft? = nil) {
         self.services = services; self.environment = environment; self.existing = existing
-        key = existing?.id ?? "new"
+        key = existing?.id ?? prefilled?.sourceTemplateID.map { "template:\($0)" } ?? "new"
         draft = EntryDraft(id: existing?.id ?? environment.newID(), requestKey: existing?.requestKey ?? environment.newID(),
             occurredMillis: existing?.occurredAt.epochMillis ?? environment.now(), zoneID: existing?.occurredAt.zoneID ?? environment.zoneID())
         draft.accountID = existing?.accountID ?? accounts.first { $0.isDefault && !$0.isArchived }?.id ?? accounts.first { !$0.isArchived }?.id ?? ""
@@ -29,12 +30,14 @@ final class EntryViewModel {
             draft.currencyCode = existing.original.currencyCode.rawValue; draft.baseCurrencyCode = existing.convertedBase.currencyCode.rawValue
             draft.baseScale = existing.convertedBase.scale; draft.note = existing.note ?? ""; draft.tagIDs = existing.tagIDs
         }
+        if let prefilled { draft = prefilled }
     }
     func load() async {
         guard !loaded else { return }; loaded = true
         let original = draft
         do {
             if let saved = try await services.drafts.load(key: key), draft == original,
+               saved.sourceTemplateID == original.sourceTemplateID,
                existing == nil || (saved.id == existing?.id && saved.editingUpdatedAt == existing?.updatedAt) {
                 draft = saved; restored = true
             }

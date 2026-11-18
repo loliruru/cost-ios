@@ -9,11 +9,13 @@ struct LedgerRepositories: Sendable {
     let fiatQuotes: any FiatQuoteRepository
     let marketQuotes: any MarketQuoteRepository
     let funds: any AccountFundsRepository
+    let templates: any QuickTemplateRepository
 
     init(database: AppDatabase) {
         let repository = GRDBLedgerRepository(database: database)
         currencies = repository; categories = repository; accounts = repository; tags = repository
         transactions = repository; fiatQuotes = repository; marketQuotes = repository; funds = repository
+        templates = repository
     }
 }
 
@@ -197,6 +199,9 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
     static func find(_ db: Database, id: String) throws -> LedgerTransaction? {
         try load(db, sql: "SELECT * FROM transactions WHERE id = ?", arguments: [id]).first
     }
+    static func find(_ db: Database, requestKey: String) throws -> LedgerTransaction? {
+        try load(db, sql: "SELECT * FROM transactions WHERE request_key = ?", arguments: [requestKey]).first
+    }
     private static func checkManaged(_ db: Database, id: String) throws {
         if try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM account_transfers WHERE profit_transaction_id = ?)", arguments: [id]) == true {
             throw LedgerError.managedTransaction
@@ -228,21 +233,33 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
         }
     }
 
+    static func insertTransaction(_ db: Database, _ transaction: LedgerTransaction) throws {
+        try validateCurrencies(db, transaction: transaction)
+        try validateActiveReferences(db, transaction: transaction)
+        try TransactionRecord(transaction).insert(db)
+        try replaceTags(db, transaction: transaction)
+    }
+
     func createTransaction(_ transaction: LedgerTransaction) async throws -> LedgerTransaction {
         try transaction.validate()
         return try await write { db in
-            if let key = transaction.requestKey,
-               let existing = try Self.load(db, sql: "SELECT * FROM transactions WHERE request_key = ?", arguments: [key]).first {
+            if let key = transaction.requestKey, let existing = try Self.find(db, requestKey: key) {
+                guard existing.source == transaction.source, existing.sourceID == transaction.sourceID else { throw LedgerError.conflict }
                 return existing
             }
             if let existing = try Self.find(db, id: transaction.id) {
                 guard existing == transaction else { throw LedgerError.conflict }
                 return existing
             }
-            try Self.validateCurrencies(db, transaction: transaction)
-            try Self.validateActiveReferences(db, transaction: transaction)
-            try TransactionRecord(transaction).insert(db)
-            try Self.replaceTags(db, transaction: transaction)
+            if transaction.source == .template, let id = transaction.sourceID {
+                guard !QuickTemplateUse.recordsUsage(source: transaction.source, requestKey: transaction.requestKey) else {
+                    throw LedgerError.conflict
+                }
+                _ = try Self.requireAvailableTemplate(db, id: id)
+                guard let currency = try CurrencyRecord.fetchOne(db, key: transaction.original.currencyCode.rawValue),
+                      currency.is_enabled == 1, currency.asset_type == AssetType.fiat.rawValue else { throw QuickTemplateError.currencyUnavailable }
+            }
+            try Self.insertTransaction(db, transaction)
             return transaction
         }
     }
@@ -268,7 +285,7 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
         try await read { db in try Self.find(db, id: id) }
     }
     func transaction(requestKey: String) async throws -> LedgerTransaction? {
-        try await read { db in try Self.load(db, sql: "SELECT * FROM transactions WHERE request_key = ?", arguments: [requestKey]).first }
+        try await read { db in try Self.find(db, requestKey: requestKey) }
     }
     func recentTransactions(limit: Int = 200) async throws -> [LedgerTransaction] {
         guard (1...2000).contains(limit) else { throw LedgerError.invalidField("limit") }
@@ -309,7 +326,9 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
             try Self.checkManaged(db, id: id)
             try db.execute(sql: "UPDATE transactions SET deleted_at_epoch_millis = ?, updated_at_epoch_millis = ? WHERE id = ? AND deleted_at_epoch_millis IS NULL AND updated_at_epoch_millis <= ?",
                            arguments: [timestamp, timestamp, id, timestamp])
-            return db.changesCount > 0
+            guard db.changesCount > 0 else { return false }
+            try Self.changeTemplateUsage(db, transactionID: id, restoring: false, at: timestamp)
+            return true
         }
     }
     func restoreTransaction(id: String, at timestamp: Int64) async throws -> Bool {
@@ -317,7 +336,9 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
             try Self.checkManaged(db, id: id)
             try db.execute(sql: "UPDATE transactions SET deleted_at_epoch_millis = NULL, updated_at_epoch_millis = ? WHERE id = ? AND deleted_at_epoch_millis IS NOT NULL AND updated_at_epoch_millis <= ?",
                            arguments: [timestamp, id, timestamp])
-            return db.changesCount > 0
+            guard db.changesCount > 0 else { return false }
+            try Self.changeTemplateUsage(db, transactionID: id, restoring: true, at: timestamp)
+            return true
         }
     }
 

@@ -46,7 +46,7 @@ final class AppContainer {
             ledger = LedgerViewModel(services: LedgerServices(currencies: repositories.currencies, categories: repositories.categories,
                 accounts: repositories.accounts, tags: repositories.tags, transactions: repositories.transactions,
                 funds: repositories.funds, drafts: PrivateEntryDraftStore(suiteName: draftSuite),
-                visuals: visuals))
+                visuals: visuals, templates: repositories.templates))
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.
