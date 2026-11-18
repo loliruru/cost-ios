@@ -2,9 +2,9 @@
 
 独立的 iOS 原生 Cost 记账应用。开发环境为 Windows；Swift 6 / SwiftUI / iOS 18+，数据库使用 GRDB，工程由 XcodeGen 生成。Android 参考项目只读。
 
-Phase 3 已通过真机验收。Phase 4 快捷模板已实现，验证结果见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。
+Phase 3 已通过真机验收。Phase 4 快捷模板已完成，通过 72 项 Swift 测试、4 项原生 UI 测试及构建和 IPA 检查。[快捷模板验证与真机试用步骤](docs/PHASE4_QUICK_TEMPLATES.md)
 
-[Phase 3 已验证 IPA（0.3.0 / build 4）](https://github.com/loliruru/cost-ios/actions/runs/44328711441/artifacts/14442235308)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装由用户手动完成。当前快速录入支持本币，外币估值留在 Phase 7。
+[Phase 4 已验证 IPA（0.4.0 / build 5）](https://github.com/loliruru/cost-ios/actions/runs/44340678945/artifacts/14443892963)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装由用户手动完成。当前支持本币记账，外币模板可保留草稿，估值在 Phase 7 提供。
 
 先读 [协作规则](AGENTS.md)、[实施计划](docs/IMPLEMENTATION_PLAN.md)、[审计报告](docs/ANDROID_AUDIT.md)和[技术决策](docs/DECISIONS.md)。原始计划保存在 [cost-ios-codex-plan.md](cost-ios-codex-plan.md)。
 

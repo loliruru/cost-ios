@@ -10,7 +10,7 @@
 
 原有 v1 模板表与账单表可承担本阶段数据。通过保留的 `quick-template-use:` 请求键前缀标记一键路径，编辑后记账使用普通唯一请求键。没有新增迁移、seed 或依赖。Android 参考为 `ManageQuickTemplatesUseCase`、`QuickTemplateDao`、`RoomTransactionRepository` 的模板原子写入与撤销、以及原有 schema v10。
 
-## 真机验收
+## 真机试用
 
 1. 打开「模板」，新增 CNY 支出模板「验收午餐」，填写金额 12.34、分类和账户。点「一键记账」，确认账单和一次使用记录。立即再次双击，验证一次手势不会写两笔。
 2. 回到模板页点「撤销记账」。账单从活动列表消失，使用次数和最近使用时间回退。恢复该账单后，统计随之恢复。
@@ -20,4 +20,10 @@
 
 ## 验证状态
 
-等候本阶段 CI 的 Build、Swift tests、UI tests 和 unsigned IPA。
+2026-11-19，[CI run 44340678945](https://github.com/loliruru/cost-ios/actions/runs/44340678945) 通过，应用提交 `7283bb66b918c7c212e1637af71b2de8dd5bfb4c`。
+
+- Xcode 16.4、Swift 6.1.2、iOS 18.5 SDK。Simulator Build、72 项 Swift tests、4 项原生 UI tests、unsigned device Archive 全部通过。新增的模拟器 UI 测试从模板页创建模板，双击一键记账只出现一条账单，撤销后活动账单为空。
+- Windows 下载后复核 IPA 为 `0.4.0 / build 5`，arm64 iOS、最低 iOS 18.0、未签名，共 1,936,413 bytes，SHA-256 为 `84e0475dcdbd8fa8d80d3429619012ce75e5be76b8203100026d34b91eede12b`，与 CI 文件一致。
+- Foundation、schema、6 项打包校验器测试和 Android 53 文件只读基线检查通过。真机安装和视觉体验尚未执行，本阶段完成门禁为 Build/Test。
+
+[下载未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44340678945/artifacts/14443892963) · [构建和测试证据](https://github.com/loliruru/cost-ios/actions/runs/44340678945/artifacts/14445185721)

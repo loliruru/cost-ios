@@ -10,7 +10,7 @@
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
-| 4 | 快捷模板 | 已实现，等待本阶段 CI |
+| 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
 | 5 | 周期记账 | 未开始 |
 | 6 | 统计与异常 | 未开始 |
 | 7 | Fiat FX 与 Crypto 基础 | 未开始 |
@@ -81,7 +81,7 @@ Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑�
 
 验收：并发 request key 防重、usage 只增一次、撤销/失败回滚、稳定四级排序、删除保留历史交易、编辑不回写模板；Build+Test 后独立提交停止。
 
-实现与验收详见 [Phase 4 记录](PHASE4_QUICK_TEMPLATES.md)。
+实际验证（2026-11-19）：[CI run 44340678945](https://github.com/loliruru/cost-ios/actions/runs/44340678945) 的 72 项 Swift 测试、4 项 UI 测试、Simulator Build、设备 Archive 与 IPA 打包通过。Windows 下载复核为未签名 arm64 iOS IPA 0.4.0 / build 5，SHA-256 与 CI 一致。外币模板仅在缺少估值时保留可编辑草稿。实现、证据与试用步骤见 [Phase 4 记录](PHASE4_QUICK_TEMPLATES.md)。
 
 ## Phase 5 — 周期记账
 
