@@ -52,4 +52,25 @@ final class LedgerUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertTrue(row.isHittable)
     }
+
+    @MainActor
+    func testCategorySortLabelStaysVisibleWithPrefilledValue() {
+        let app = launch()
+        app.tabBars.buttons["设置"].tap()
+        app.buttons["分类"].tap()
+        let addCategory = app.buttons["新增分类"]
+        XCTAssertTrue(addCategory.waitForExistence(timeout: 10))
+        addCategory.tap()
+
+        let order = app.textFields["metadata.sortOrder"]
+        let label = app.staticTexts["排序（小的在前）"]
+        XCTAssertTrue(order.waitForExistence(timeout: 10))
+        XCTAssertEqual(order.value as? String, "0")
+        XCTAssertTrue(label.isHittable)
+
+        order.tap()
+        order.typeText(XCUIKeyboardKey.delete.rawValue + "10")
+        XCTAssertEqual(order.value as? String, "10")
+        XCTAssertTrue(label.isHittable)
+    }
 }

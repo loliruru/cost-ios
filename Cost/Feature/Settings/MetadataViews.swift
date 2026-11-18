@@ -46,7 +46,14 @@ struct MetadataEditorView: View {
             Form {
                 Section {
                     TextField("名称", text: $model.name)
-                    if model.kind != .tag { TextField("排序（小的在前）", text: $model.order).keyboardType(.numbersAndPunctuation) }
+                    if model.kind != .tag {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("排序（小的在前）").font(.subheadline)
+                            TextField("排序数字", text: $model.order)
+                                .keyboardType(.numbersAndPunctuation)
+                                .accessibilityIdentifier("metadata.sortOrder")
+                        }
+                    }
                     if model.kind == .category {
                         Picker("收支", selection: $model.type) { Text("支出").tag(TransactionType.expense); Text("收入").tag(TransactionType.income) }
                         Picker("父分类", selection: $model.parentID) {
