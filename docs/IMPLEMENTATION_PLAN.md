@@ -9,7 +9,7 @@
 | 0 | 项目初始化与 Android 审计 | 完成（2026-11-15，随本阶段首次提交交付） |
 | 1 | Windows→GitHub→macOS→IPA 构建链路 | 完成（2026-11-15，Actions/IPA 下载复核通过） |
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
-| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 实现/自动验证通过（2026-11-18，66 Swift tests + 2 UI tests / Build / IPA）；待用户真机布局与风格验收 |
+| 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 实现/自动验证通过（build 4，66 Swift tests + 3 UI tests / Build / IPA），待用户真机布局与风格验收 |
 | 4 | 快捷模板 | 未开始 |
 | 5 | 周期记账 | 未开始 |
 | 6 | 统计与异常 | 未开始 |

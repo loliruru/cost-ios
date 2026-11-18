@@ -64,6 +64,12 @@
 
 限制：当前快速录入只保存本币完整 identity 快照；Fiat FX/Crypto、模板、循环、统计和完整备份仍按后续阶段实现。Glass 精修属于 Phase 9。用户手动签名安装后，按下列清单验收；未收到 PASS 前 Phase 3 不标记全部完成。
 
+## 排序可见性修复（build 4）
+
+真机反馈指出分类表单找不到排序项。build 3 将说明作为输入框占位文字，预填的 `0` 隐藏了说明。提交 `0d03d6c` 在分类和账户表单将「排序（小的在前）」显示为常驻标签，位置在「名称」下方。新增 UI 测试确认输入框分别为 `0` 和 `10` 时，标签均可见。
+
+ARM Runner 两次没有取得执行机器，本次使用独立 Intel 验证分支。提交 `875467a` 相对主分支修复提交只调整 Runner 标签与对应的静态检查。Xcode 16.4 和 iOS 18.5 模拟器通过 66 项 Swift tests、3 项 UI tests，设备 Archive 和 IPA 检查也通过。下载后复核为 `0.3.0 / build 4`、arm64 iOS device、未签名，SHA-256 与 CI 一致（`0e77bb88dbdcca8567ed3ee42b33059f0fe192b2f868f2dca68238a310d711ae`）。[CI 运行](https://github.com/loliruru/cost-ios/actions/runs/44328711441) · [build 4 IPA](https://github.com/loliruru/cost-ios/actions/runs/44328711441/artifacts/14442235308)
+
 ## 真机验收步骤（待用户执行）
 
 使用自建测试资料即可，无需提供真实账本、金额或截图：
