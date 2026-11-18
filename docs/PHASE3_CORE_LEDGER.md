@@ -1,6 +1,6 @@
 # Phase 3 核心账单与基础资料
 
-开始日期：2026-11-17（Asia/Singapore），验证持续至 2026-11-18。用户已批准 Phase 3；本阶段进行中，未获真机视觉验收，未开始 Phase 4。
+开始日期：2026-11-17（Asia/Singapore）。build 4 的自动验证通过后，用户回复「通过。开始执行phase4。」，Phase 3 真机验收通过。
 
 ## 范围与进度
 
@@ -70,7 +70,7 @@
 
 ARM Runner 两次没有取得执行机器，本次使用独立 Intel 验证分支。提交 `875467a` 相对主分支修复提交只调整 Runner 标签与对应的静态检查。Xcode 16.4 和 iOS 18.5 模拟器通过 66 项 Swift tests、3 项 UI tests，设备 Archive 和 IPA 检查也通过。下载后复核为 `0.3.0 / build 4`、arm64 iOS device、未签名，SHA-256 与 CI 一致（`0e77bb88dbdcca8567ed3ee42b33059f0fe192b2f868f2dca68238a310d711ae`）。[CI 运行](https://github.com/loliruru/cost-ios/actions/runs/44328711441) · [build 4 IPA](https://github.com/loliruru/cost-ios/actions/runs/44328711441/artifacts/14442235308)
 
-## 真机验收步骤（待用户执行）
+## 真机验收清单
 
 使用自建测试资料即可，无需提供真实账本、金额或截图：
 
