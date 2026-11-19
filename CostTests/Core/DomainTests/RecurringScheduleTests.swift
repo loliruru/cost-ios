@@ -19,7 +19,8 @@ struct RecurringScheduleTests {
         #expect(try rule.occurrence(onOrAfter: day("2026-09-05")) == millis("2026-09-07T08:00:00Z"))
         rule.frequency = .weeklySet
         rule.weekdaysMask = (1 << 1) | (1 << 3)
-        let last = try #require(rule.occurrence(onOrAfter: rule.startDay))
+        let finalOccurrence = try rule.occurrence(onOrAfter: rule.startDay)
+        let last = try #require(finalOccurrence)
         #expect(last == millis("2026-09-08T08:00:00Z"))
         #expect(try rule.next(after: last) == nil)
         rule.weekdaysMask = 0

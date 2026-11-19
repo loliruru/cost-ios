@@ -68,9 +68,9 @@ final class RecurringSystem {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(secondsFromGMT: 0)!
             let components = calendar.dateComponents(in: calendar.timeZone, from: date)
-            var triggerDate = DateComponents(year: components.year, month: components.month, day: components.day,
+            let triggerDate = DateComponents(calendar: calendar, timeZone: calendar.timeZone,
+                year: components.year, month: components.month, day: components.day,
                 hour: components.hour, minute: components.minute, second: components.second)
-            triggerDate.timeZone = calendar.timeZone
             let content = UNMutableNotificationContent()
             content.title = String(localized: "周期记账提醒")
             content.body = String(localized: "有一笔周期账单到期。打开 Cost 查看处理情况。")
