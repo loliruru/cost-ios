@@ -50,4 +50,26 @@ struct AppBootstrapTests {
         #expect(container.ledger?.rows.count == 2)
         #expect(await fixture.calls == 1)
     }
+
+    @Test @MainActor
+    func backgroundEntryUsesTheRegisteredRefreshIdentifierAndSameLedger() async throws {
+        let identifiers = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String]
+        let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
+        #expect(identifiers == [RecurringSystem.refreshIdentifier])
+        #expect(modes?.contains("fetch") == true)
+
+        let database = try AppDatabase.inMemory()
+        let repositories = LedgerRepositories(database: database)
+        let content = try RecurringContent(name: "fixture", type: .expense,
+            amount: Money.parse("1", currencyCode: CurrencyCode("CNY"), scale: 2), categoryID: "seed-expense-other",
+            accountID: "seed-default-account", note: nil, tagIDs: [],
+            schedule: RecurringSchedule(startDay: 1, endDay: 1, minutes: 0, zoneID: "UTC"), catchUp: .createMissed)
+        try await repositories.recurring.saveRecurringRule(id: "background", content: content, expectedVersion: nil, at: 1000)
+        let container = AppContainer(mediaRoot: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+            recurringEnvironment: LedgerEnvironment(now: { 2 * 86_400_000 }), openDatabase: { database })
+        await container.processRecurring(background: true)
+        #expect(try await repositories.transactions.recentTransactions(limit: 10).count == 1)
+        await container.processRecurring()
+        #expect(container.ledger?.rows.count == 1)
+    }
 }

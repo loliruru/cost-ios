@@ -55,12 +55,10 @@ final class RecurringSystem {
     }
 
     private func applyReminders(for rules: [RecurringRule], now: Int64) async throws {
-        let authorized = await center.notificationSettings().authorizationStatus
-        let allowed = authorized == .authorized || authorized == .provisional || authorized == .ephemeral
+        let allowed = await authorizationAllowsReminders()
         let desired = remindersEnabled && allowed ? try RecurringReminder.upcoming(rules: rules, after: now, limit: 32) : []
-        let pending = await center.pendingNotificationRequests()
+        let previous = await pendingReminderIDs()
         try Task.checkCancellation()
-        let previous = Set(pending.map(\.identifier).filter { $0.hasPrefix("cost-reminder:recurring:") })
         let wanted = Set(desired.map(\.id))
         center.removePendingNotificationRequests(withIdentifiers: Array(previous.subtracting(wanted)))
         for reminder in desired where !previous.contains(reminder.id) {
@@ -79,6 +77,25 @@ final class RecurringSystem {
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
             try await center.add(UNNotificationRequest(identifier: reminder.id, content: content, trigger: trigger))
+        }
+    }
+
+    // Extract sendable values before crossing from the system callback to the main actor.
+    private func authorizationAllowsReminders() async -> Bool {
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { @Sendable settings in
+                let status = settings.authorizationStatus
+                continuation.resume(returning: [.authorized, .provisional, .ephemeral].contains(status))
+            }
+        }
+    }
+
+    private func pendingReminderIDs() async -> Set<String> {
+        await withCheckedContinuation { continuation in
+            center.getPendingNotificationRequests { @Sendable requests in
+                let ids = requests.map(\.identifier).filter { $0.hasPrefix("cost-reminder:recurring:") }
+                continuation.resume(returning: Set(ids))
+            }
         }
     }
 }
