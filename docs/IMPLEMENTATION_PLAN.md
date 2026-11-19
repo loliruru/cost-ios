@@ -11,7 +11,7 @@
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
 | 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
-| 5 | 周期记账 | 未开始 |
+| 5 | 周期记账 | 已实现，待 macOS 验证 |
 | 6 | 统计与异常 | 未开始 |
 | 7 | Fiat FX 与 Crypto 基础 | 未开始 |
 | 8 | CSV、完整备份与跨平台恢复 | 未开始 |
@@ -88,6 +88,8 @@ Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑�
 规则 CRUD、六种频率、月末、时区、起止、暂停/恢复/补记策略；occurrence/execution/cursor 原子幂等；前台补处理、BGAppRefreshTask 和本地提醒。后台不承诺准点，规则/模板独立。网络历史/latest 分支在 Phase 7 完成前用固定 Provider 验证，生产无估值则明确待处理。
 
 验收：gap/overlap 的 Android 固定向量、跨月/年/闰年、两种补记、取消/重启/并发生成一次、失败重试/跳过、删除保留已有账单；前台补执行与系统任务验证；Build+Test 后提交停止。
+
+用户于 2026-11-19 确认 Phase 4 通过并批准 Phase 5。实现和真机验收步骤见 [Phase 5 记录](PHASE5_RECURRING.md)。
 
 ## Phase 6 — 统计与异常
 

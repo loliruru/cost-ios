@@ -2,11 +2,12 @@ import XCTest
 
 final class LedgerUITests: XCTestCase {
     @MainActor
-    func launch(largeText: Bool = false) -> XCUIApplication {
+    func launch(largeText: Bool = false, recurringClock: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--cost-ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"] }
+        if recurringClock { app.launchArguments.append("--cost-recurring-fixed-clock") }
         app.launch()
         XCTAssertTrue(app.buttons["ledger.add"].waitForExistence(timeout: 20))
         return app
@@ -111,5 +112,46 @@ final class LedgerUITests: XCTestCase {
         app.tabBars.buttons["账单"].tap()
         XCTAssertTrue(app.staticTexts["暂无账单"].waitForExistence(timeout: 10))
         XCTAssertEqual(bills.count, 0)
+    }
+
+    @MainActor
+    func testRecurringRuleCreatesBillAndDeletionPreservesIt() {
+        let app = launch(recurringClock: true)
+        app.tabBars.buttons["设置"].tap()
+        app.buttons["recurring.open"].tap()
+        let add = app.buttons["recurring.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        add.tap()
+        let name = app.textFields["recurring.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap(); name.typeText("Recurring lunch")
+        let amount = app.textFields["recurring.amount"]
+        if !amount.isHittable { app.swipeUp() }
+        XCTAssertTrue(amount.isHittable)
+        amount.tap(); amount.typeText("12.34")
+        app.buttons["recurring.save"].tap()
+
+        let rule = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'recurring.rule.'")).firstMatch
+        XCTAssertTrue(rule.waitForExistence(timeout: 10))
+        app.tabBars.buttons["账单"].tap()
+        let bills = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.'"))
+        XCTAssertTrue(bills.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertEqual(bills.count, 1)
+        XCTAssertTrue(bills.firstMatch.label.contains("12.34"))
+
+        app.tabBars.buttons["设置"].tap()
+        XCTAssertTrue(rule.waitForExistence(timeout: 10))
+        rule.tap()
+        let delete = app.buttons["删除规则"]
+        for _ in 0..<5 where !delete.isHittable { app.swipeUp() }
+        XCTAssertTrue(delete.isHittable)
+        delete.tap()
+        let confirm = app.buttons["确认删除"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["暂无周期规则"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["账单"].tap()
+        XCTAssertTrue(bills.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertEqual(bills.count, 1)
     }
 }

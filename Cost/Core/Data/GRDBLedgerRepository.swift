@@ -10,12 +10,13 @@ struct LedgerRepositories: Sendable {
     let marketQuotes: any MarketQuoteRepository
     let funds: any AccountFundsRepository
     let templates: any QuickTemplateRepository
+    let recurring: any RecurringRepository
 
     init(database: AppDatabase) {
         let repository = GRDBLedgerRepository(database: database)
         currencies = repository; categories = repository; accounts = repository; tags = repository
         transactions = repository; fiatQuotes = repository; marketQuotes = repository; funds = repository
-        templates = repository
+        templates = repository; recurring = repository
     }
 }
 

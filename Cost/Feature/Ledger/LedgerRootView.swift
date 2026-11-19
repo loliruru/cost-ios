@@ -2,30 +2,33 @@ import SwiftUI
 
 struct LedgerRootView: View {
     @Bindable var model: LedgerViewModel
-    @Environment(\.scenePhase) private var scenePhase
+    let recurring: RecurringViewModel
     var body: some View {
         TabView {
             LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
             QuickTemplatesView(ledger: model).tabItem { Label("模板", systemImage: "square.on.square") }
-            LedgerSettingsView(model: model).tabItem { Label("设置", systemImage: "gearshape") }
+            LedgerSettingsView(model: model, recurring: recurring).tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }
-        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.reload() } } }
         .ledgerError($model.error)
     }
 }
 
 struct LedgerSettingsView: View {
     @Bindable var model: LedgerViewModel
+    let recurring: RecurringViewModel
     var body: some View {
         NavigationStack {
             List {
                 metadataSection
                 fundsSection
+                NavigationLink {
+                    RecurringRulesView(model: recurring)
+                } label: {
+                    Label("周期记账", systemImage: "calendar.badge.clock")
+                }.accessibilityIdentifier("recurring.open")
                 Section("当前版本") {
                     LabeledContent("本位币", value: "CNY")
-                    Text("支持离线本币记账和快捷模板。")
-                        .font(.footnote).foregroundStyle(.secondary)
                 }
             }.navigationTitle("设置")
         }
