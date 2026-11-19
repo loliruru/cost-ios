@@ -23,7 +23,7 @@ final class RecurringSystem {
 
     func enableReminders(_ enabled: Bool) async throws -> Bool {
         guard !isUITesting else { return false }
-        let allowed = enabled ? try await center.requestAuthorization(options: [.alert, .sound]) : false
+        let allowed = enabled ? try await requestNotificationAuthorization() : false
         defaults.set(allowed, forKey: Self.reminderPreference)
         return allowed
     }
@@ -76,11 +76,29 @@ final class RecurringSystem {
             content.body = String(localized: "有一笔周期账单到期。打开 Cost 查看处理情况。")
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
-            try await center.add(UNNotificationRequest(identifier: reminder.id, content: content, trigger: trigger))
+            try await addNotification(UNNotificationRequest(identifier: reminder.id, content: content, trigger: trigger))
         }
     }
 
     // Extract sendable values before crossing from the system callback to the main actor.
+    private func requestNotificationAuthorization() async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            center.requestAuthorization(options: [.alert, .sound]) { @Sendable allowed, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: allowed) }
+            }
+        }
+    }
+
+    private func addNotification(_ request: UNNotificationRequest) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            center.add(request) { @Sendable error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
+    }
+
     private func authorizationAllowsReminders() async -> Bool {
         await withCheckedContinuation { continuation in
             center.getNotificationSettings { @Sendable settings in
