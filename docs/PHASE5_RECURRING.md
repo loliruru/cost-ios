@@ -15,4 +15,9 @@
 
 ## 验证状态
 
-待 GitHub Actions 执行 Simulator Build、Swift 与 UI 测试、设备 Archive 及 IPA 校验。真机通知和视觉体验待用户验收。
+2026-11-19，应用提交 `abff21fc85c202cd36969f7ee307f08ce84dc330` 在 Xcode 16.4、Swift 6.1.2、iOS 18.5 SDK 下通过 Simulator Build、83 项 Swift 测试、5 项 UI 测试及设备 Archive。 [CI run 44541018112](https://github.com/loliruru/cost-ios/actions/runs/44541018112)
+
+- Swift 测试覆盖 Android 的 gap/overlap、半小时 DST、月末和闰年、两种补记、取消、数据库重开、并发防重、写入回滚、外币估值重试和跳过。前台与后台入口使用同一账本，测试同时核对后台刷新标识符和模式。UI 测试验证设置入口、到期生成和删除规则后的账单保留。
+- Windows 下载后复核 IPA 为 0.5.0 / build 6，未签名 arm64 iOS，最低 iOS 18.0，共 2,100,396 bytes。SHA-256 为 `c0ef14cbe38dd7df9c6571ac26c7c73b87a6a45987cc0269aa3b046e6ad68957`，与 CI 一致。包内后台标识符为 `com.personal.cost.recurring-refresh`，模式为 `fetch`。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44541018112/artifacts/14540190101) · [构建与测试证据](https://github.com/loliruru/cost-ios/actions/runs/44541018112/artifacts/14537809772)
+- Foundation、schema、6 项 IPA 校验器测试和 Android 53 文件只读基线核对通过。此前 CI 揭示了 UserNotifications 的 Swift 6 actor 隔离和测试宏的 `try` 展开问题，修复后重跑通过。排队时使用的 Intel 验证分支包含 runner 配置差异，最终验收使用主分支的标准 macOS runner。
+- 真机通知、系统后台实际调度及主观视觉待用户验收。

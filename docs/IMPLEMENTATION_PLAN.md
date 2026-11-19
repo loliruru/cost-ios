@@ -11,7 +11,7 @@
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
 | 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
-| 5 | 周期记账 | 已实现，待 macOS 验证 |
+| 5 | 周期记账 | 完成（build 6，83 项 Swift 测试、5 项 UI 测试、Build / IPA 通过，待真机体验） |
 | 6 | 统计与异常 | 未开始 |
 | 7 | Fiat FX 与 Crypto 基础 | 未开始 |
 | 8 | CSV、完整备份与跨平台恢复 | 未开始 |
@@ -90,6 +90,8 @@ Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑�
 验收：gap/overlap 的 Android 固定向量、跨月/年/闰年、两种补记、取消/重启/并发生成一次、失败重试/跳过、删除保留已有账单；前台补执行与系统任务验证；Build+Test 后提交停止。
 
 用户于 2026-11-19 确认 Phase 4 通过并批准 Phase 5。实现和真机验收步骤见 [Phase 5 记录](PHASE5_RECURRING.md)。
+
+实际验证（2026-11-19）：模拟器 Build、83 项 Swift 测试、5 项 UI 测试、未签名 Archive 和 IPA 校验通过。Windows 下载复核为 0.5.0 / build 6，arm64 iOS，后台刷新标识符和 `fetch` 模式已打包。真机通知、后台实际调度和主观视觉待验收。 [CI run 44541018112](https://github.com/loliruru/cost-ios/actions/runs/44541018112)
 
 ## Phase 6 — 统计与异常
 
