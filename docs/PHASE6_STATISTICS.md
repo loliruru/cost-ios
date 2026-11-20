@@ -14,4 +14,8 @@
 
 ## 验证状态
 
-Windows 静态检查与 macOS 构建验证进行中。
+2026-11-21，源码 `51133379d565fa59803d1ea09f89530d78655373` 在标准 macOS runner 的 Xcode 16.4、Swift 6.1.2 下通过 Simulator Build、90 项 Swift 测试、6 项原生 UI 测试和未签名设备 Archive。原生 UI 测试通过账单录入、读取统计支出字段的准确金额、关闭异常检测的完整路径。 [CI run 44777713588](https://github.com/loliruru/cost-ios/actions/runs/44777713588)
+
+- Swift 测试覆盖超出 Int64 的汇总、混合精度、本位币分组、零账单日、季年边界、闰年同比、缓存刷新隔离、周期和软删除排除、样本上下限、±20% 匹配、反馈重开和清除。Windows 静态检查、35 项忽略探针、Android 53 文件只读基线核对、6 项 IPA 校验器测试通过。内存 SQLite 的查询计划确认三个聚合查询命中已有本位币和业务日索引。
+- Windows 下载复核 IPA 为 0.6.0 / build 7，未签名 arm64 iOS，最低 iOS 18.0，共 2,230,878 bytes。SHA-256 为 `aff18c7b64f3e81d5caf1cecb8ec613fdbd9697da17c5650a79d8294552c3e61`，与 CI 一致。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44777713588/artifacts/14650648526) · [构建与测试证据](https://github.com/loliruru/cost-ios/actions/runs/44777713588/artifacts/14652100246)
+- 初次构建发现 Swift 类型推断问题，后续 UI 测试定位到汇总行的无障碍金额和异常开关的交互。修正后标准 runner 完整重跑通过。真机图表观感、深色模式与大字体布局待用户确认。
