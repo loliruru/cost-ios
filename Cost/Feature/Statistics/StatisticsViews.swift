@@ -128,7 +128,7 @@ struct StatisticsView: View {
         let entries = report.categories
         let colors: [Color] = [.indigo, .teal, .orange, .purple, .blue, .pink, .green, .gray]
         let slices = Array(entries.prefix(7).map(\.amount)) + (
-            entries.count > 7 ? [entries.dropFirst(7).reduce(.zero) { $0.adding($1.amount) }] : [])
+            entries.count > 7 ? [entries.dropFirst(7).reduce(DecimalInteger.zero) { $0.adding($1.amount) }] : [])
         return Section("支出构成") {
             Chart(Array(slices.indices), id: \.self) { index in
                 SectorMark(angle: .value("支出", max(1, StatisticsDisplay.chartUnits(slices[index], relativeTo: report.total.expense))),

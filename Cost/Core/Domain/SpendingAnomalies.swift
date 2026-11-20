@@ -220,7 +220,7 @@ enum DetectSpendingAnomalies {
         let iqrSpread = iqr.multiplied(by: factor).multiplied(by: DecimalInteger("1000"))
             .divided(by: DecimalInteger("1349")).quotient
         let activeFloor = active.multiplied(by: ratio).divided(by: DecimalInteger("2")).quotient
-        let meanFloor = sorted.reduce(.zero) { $0.adding($1) }.multiplied(by: ratio)
+        let meanFloor = sorted.reduce(DecimalInteger.zero) { $0.adding($1) }.multiplied(by: ratio)
             .divided(by: DecimalInteger(String(2 * sorted.count))).quotient
         return max(center.adding(max(madSpread, iqrSpread)), max(activeFloor, meanFloor))
     }
