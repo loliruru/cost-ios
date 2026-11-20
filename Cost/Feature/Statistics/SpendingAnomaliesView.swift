@@ -42,13 +42,13 @@ struct SpendingAnomaliesView: View {
             Toggle("检测异常开支", isOn: Binding(get: { model.preferences?.enabled ?? preferences.enabled }, set: { enabled in
                 var updated = model.preferences ?? preferences
                 updated.enabled = enabled
-                Task { await model.setPreferences(updated) }
+                model.setPreferences(updated)
             })).accessibilityIdentifier("anomalies.enabled")
             if preferences.enabled {
                 Picker("灵敏度", selection: Binding(get: { model.preferences?.sensitivity ?? preferences.sensitivity }, set: { sensitivity in
                     var updated = model.preferences ?? preferences
                     updated.sensitivity = sensitivity
-                    Task { await model.setPreferences(updated) }
+                    model.setPreferences(updated)
                 })) {
                     ForEach(AnomalySensitivity.allCases) { Text(sensitivityTitle($0)).tag($0) }
                 }

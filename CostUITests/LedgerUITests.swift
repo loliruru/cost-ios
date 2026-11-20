@@ -56,8 +56,14 @@ final class LedgerUITests: XCTestCase {
         app.buttons["statistics.anomalies.open"].tap()
         let enabled = app.switches["anomalies.enabled"]
         XCTAssertTrue(enabled.waitForExistence(timeout: 10))
-        enabled.tap()
-        XCTAssertTrue(app.staticTexts["anomalies.disabled"].waitForExistence(timeout: 10))
+        let control = enabled.switches.firstMatch
+        if control.exists {
+            control.tap()
+        } else {
+            enabled.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        let disabled = app.descendants(matching: .any)["anomalies.disabled"].firstMatch
+        XCTAssertTrue(disabled.waitForExistence(timeout: 10), app.debugDescription)
     }
     @MainActor
     func testLargeTextDarkModeDraftRecoveryAndAccessibleSave() throws {

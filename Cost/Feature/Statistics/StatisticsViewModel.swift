@@ -114,12 +114,14 @@ final class StatisticsViewModel {
         preferences = await preferenceStore.load()
     }
 
-    func setPreferences(_ preferences: AnomalyPreferences) async {
+    func setPreferences(_ preferences: AnomalyPreferences) {
         guard !isSavingPreferences else { return }
-        isSavingPreferences = true
-        defer { isSavingPreferences = false }
-        await preferenceStore.save(preferences)
         self.preferences = preferences
+        isSavingPreferences = true
+        Task {
+            await preferenceStore.save(preferences)
+            isSavingPreferences = false
+        }
     }
 
     func observeAnomalies(_ query: DetectionQuery?) async {
