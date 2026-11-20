@@ -129,7 +129,7 @@ struct RecurringSchedule: Equatable, Sendable {
 }
 
 // Proleptic Gregorian conversion based on 400-year eras, with March as the first month.
-private struct GregorianDay {
+struct GregorianDay {
     let year: Int64
     let month: Int64
     let day: Int64
@@ -143,8 +143,8 @@ private struct GregorianDay {
 
     init(epochDay: Int64) {
         let shifted = epochDay + 719_468
-        let era = shifted / 146_097
-        let dayOfEra = shifted % 146_097
+        let era = (shifted < 0 ? shifted - 146_096 : shifted) / 146_097
+        let dayOfEra = shifted - era * 146_097
         let yearOfEra = (dayOfEra - dayOfEra / 1460 + dayOfEra / 36_524 - dayOfEra / 146_096) / 365
         let dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100)
         let marchMonth = (5 * dayOfYear + 2) / 153
@@ -155,8 +155,8 @@ private struct GregorianDay {
 
     var epochDay: Int64 {
         let marchYear = year - (month <= 2 ? 1 : 0)
-        let era = marchYear / 400
-        let yearOfEra = marchYear % 400
+        let era = (marchYear < 0 ? marchYear - 399 : marchYear) / 400
+        let yearOfEra = marchYear - era * 400
         let marchMonth = month + (month > 2 ? -3 : 9)
         let dayOfYear = (153 * marchMonth + 2) / 5 + day - 1
         return era * 146_097 + yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear - 719_468

@@ -35,6 +35,25 @@ final class LedgerUITests: XCTestCase {
         app.buttons["撤销删除"].tap()
         XCTAssertTrue(updated.waitForExistence(timeout: 10))
     }
+
+    @MainActor
+    func testStatisticsUsesFrozenExpenseAndExposesAnomalyControl() {
+        let app = launch()
+        app.buttons["ledger.add"].tap()
+        let amount = app.textFields["entry.amount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 10))
+        amount.tap()
+        amount.typeText("12.34")
+        app.buttons["entry.save"].tap()
+        app.tabBars.buttons["统计"].tap()
+        let expense = app.staticTexts["12.34 CNY"]
+        XCTAssertTrue(expense.firstMatch.waitForExistence(timeout: 10))
+        app.buttons["statistics.anomalies.open"].tap()
+        let enabled = app.switches["anomalies.enabled"]
+        XCTAssertTrue(enabled.waitForExistence(timeout: 10))
+        enabled.tap()
+        XCTAssertTrue(app.staticTexts["anomalies.disabled"].waitForExistence(timeout: 10))
+    }
     @MainActor
     func testLargeTextDarkModeDraftRecoveryAndAccessibleSave() throws {
         let app = launch(largeText: true)

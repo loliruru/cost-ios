@@ -35,9 +35,9 @@ Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送�
 
 ## 精确数值与统计
 
-Int64 minor units 与字符串 Decimal rate/price，禁用 Double/Float。Foundation Decimal 输入必须经 canonical text 无损往返；乘除采用项目内十进制整数系数，允许超过 38 位的精确中间积，最终仅一次 HALF_EVEN，再检查正数与 Int64 溢出。Phase 2 已通过 Android 数值边界与 264 组 precision-120 独立对照；没有新增数值库。统计多行聚合仍在 Phase 6 实现。
+Int64 minor units 与字符串 Decimal rate/price，禁用 Double/Float。Foundation Decimal 输入必须经 canonical text 无损往返；乘除采用项目内十进制整数系数，允许超过 38 位的精确中间积，最终仅一次 HALF_EVEN，再检查正数与 Int64 溢出。Phase 2 已通过 Android 数值边界与 264 组 precision-120 独立对照；没有新增数值库。
 
-统计按 local epoch day 半开区间和冻结本位币查询，有界 bucket/样本并精确累加；SQLite SUM(Int64) 也有溢出，不能改成 REAL/TOTAL 绕过。详见[数据模型](DATA_MODEL.md)。
+统计按 local epoch day 半开区间和冻结本位币查询。SQLite 自定义聚合用检查溢出的 Int64 累加，超过上限后用精确十进制系数继续，并以文本返回。Domain 归一化 scale、补零、计算自然周期和对比。GRDB 以同一读取快照获取各区间与分类数据，变化后刷新报表及前台异常检测。详见[数据模型](DATA_MODEL.md)。
 
 ## Provider 与失败
 

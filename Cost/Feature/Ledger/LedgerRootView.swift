@@ -3,10 +3,12 @@ import SwiftUI
 struct LedgerRootView: View {
     @Bindable var model: LedgerViewModel
     let recurring: RecurringViewModel
+    let statistics: StatisticsViewModel
     var body: some View {
         TabView {
             LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
             QuickTemplatesView(ledger: model).tabItem { Label("模板", systemImage: "square.on.square") }
+            StatisticsView(model: statistics).tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
             LedgerSettingsView(model: model, recurring: recurring).tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }

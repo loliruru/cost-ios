@@ -40,6 +40,7 @@ final class AppDatabase: Sendable {
         var config = Configuration()
         config.foreignKeysEnabled = true
         config.busyMode = .timeout(5)
+        config.prepareDatabase { db in db.add(function: FrozenMinorSum.function) }
         return config
     }
 

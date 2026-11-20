@@ -11,8 +11,8 @@
 | 2 | 精确数值、GRDB、schema、Migration、Repository | 完成（2026-11-16，36 项 Swift tests / Build / IPA 通过） |
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
 | 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
-| 5 | 周期记账 | 完成（build 6，83 项 Swift 测试、5 项 UI 测试、Build / IPA 通过，待真机体验） |
-| 6 | 统计与异常 | 未开始 |
+| 5 | 周期记账 | 完成（build 6，自动验证通过，2026-11-20 用户确认通过） |
+| 6 | 统计与异常 | 实现完成，验证中 |
 | 7 | Fiat FX 与 Crypto 基础 | 未开始 |
 | 8 | CSV、完整备份与跨平台恢复 | 未开始 |
 | 9 | 原生 Glass 与 UI 精修 | 未开始 |
@@ -93,11 +93,15 @@ Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑�
 
 实际验证（2026-11-19）：模拟器 Build、83 项 Swift 测试、5 项 UI 测试、未签名 Archive 和 IPA 校验通过。Windows 下载复核为 0.5.0 / build 6，arm64 iOS，后台刷新标识符和 `fetch` 模式已打包。真机通知、后台实际调度和主观视觉待验收。 [CI run 44541018112](https://github.com/loliruru/cost-ios/actions/runs/44541018112)
 
+2026-11-20 用户确认 Phase 5 通过并批准 Phase 6。
+
 ## Phase 6 — 统计与异常
 
 冻结金额 SQL 聚合（防整数溢出）、7/30/90/自定义、自然日补零与均值、分类组成/趋势/收支、环比/同比/partial、混合历史本位币分组。Swift Charts 原生图表与可读摘要；本地有界稳健异常检测、开关/灵敏度与持久反馈。
 
 验收：零消费日、零基准、partial/闰年边界、不同 scale/base、缓存刷新不影响历史；样本不足/过多、排除循环、±20% 正常反馈；有界查询/索引与可访问摘要；Build+Test 后提交停止。
+
+实现与验收步骤见 [Phase 6 记录](PHASE6_STATISTICS.md)。
 
 ## Phase 7 — 多币种与 Provider
 

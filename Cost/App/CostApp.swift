@@ -10,14 +10,17 @@ struct CostApp: App {
         let appContainer = container
         WindowGroup {
             Group {
-                if let ledger = container.ledger, let recurring = container.recurring {
-                    LedgerRootView(model: ledger, recurring: recurring)
+                if let ledger = container.ledger, let recurring = container.recurring, let statistics = container.statistics {
+                    LedgerRootView(model: ledger, recurring: recurring, statistics: statistics)
                 }
                 else { ProgressView("Cost") }
             }
                 .environment(container)
                 .task(id: scenePhase) {
-                    if scenePhase == .active { await container.processRecurring() }
+                    if scenePhase == .active {
+                        container.statistics?.refreshDay()
+                        await container.processRecurring()
+                    }
                 }
                 .alert("无法打开本地数据", isPresented: $container.startupFailed) {
                     Button("重试") { Task { await container.processRecurring() } }

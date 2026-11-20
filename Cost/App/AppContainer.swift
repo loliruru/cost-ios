@@ -14,6 +14,7 @@ final class AppContainer {
     private(set) var isReady = false
     private(set) var ledger: LedgerViewModel?
     private(set) var recurring: RecurringViewModel?
+    private(set) var statistics: StatisticsViewModel?
     var startupFailed = false
 
     init(mediaRoot: URL? = nil, recurringEnvironment: LedgerEnvironment = LedgerEnvironment(),
@@ -61,12 +62,16 @@ final class AppContainer {
                 visuals: visuals, templates: repositories.templates))
             self.ledger = ledger
             recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(), environment: recurringEnvironment)
+            statistics = try StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
+                preferenceStore: PrivateAnomalyPreferences(suiteName: draftSuite),
+                currency: CurrencyCode(EntryDraft.defaultBaseCurrencyCode), environment: recurringEnvironment)
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.
             repositories = nil
             ledger = nil
             recurring = nil
+            statistics = nil
             startupFailed = true
         }
     }
