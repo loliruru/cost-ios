@@ -67,13 +67,18 @@ struct StatisticsView: View {
         let negative = total.income < total.expense
         let net = negative ? total.expense.subtracting(total.income) : total.income.subtracting(total.expense)
         return Section("收支概览") {
-            LabeledContent("收入", value: StatisticsDisplay.money(total.income, in: report))
-                .accessibilityIdentifier("statistics.total.income")
-            LabeledContent("支出", value: StatisticsDisplay.money(total.expense, in: report))
-                .accessibilityIdentifier("statistics.total.expense")
-            LabeledContent("净额", value: (negative ? "−" : "") + StatisticsDisplay.money(net, in: report))
-                .accessibilityIdentifier("statistics.total.net")
+            summaryAmount("收入", StatisticsDisplay.money(total.income, in: report), id: "statistics.total.income")
+            summaryAmount("支出", StatisticsDisplay.money(total.expense, in: report), id: "statistics.total.expense")
+            summaryAmount("净额", (negative ? "−" : "") + StatisticsDisplay.money(net, in: report), id: "statistics.total.net")
         }
+    }
+
+    private func summaryAmount(_ label: String, _ value: String, id: String) -> some View {
+        LabeledContent(label, value: value)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(Text(value))
+            .accessibilityIdentifier(id)
     }
 
     private func trend(_ report: StatisticsReport) -> some View {

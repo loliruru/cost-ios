@@ -45,9 +45,14 @@ final class LedgerUITests: XCTestCase {
         amount.tap()
         amount.typeText("12.34")
         app.buttons["entry.save"].tap()
+        let recorded = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.' AND label CONTAINS '12.34'")).firstMatch
+        XCTAssertTrue(recorded.waitForExistence(timeout: 10))
         app.tabBars.buttons["统计"].tap()
-        let expense = app.staticTexts["12.34 CNY"]
-        XCTAssertTrue(expense.firstMatch.waitForExistence(timeout: 10))
+        let expense = app.descendants(matching: .any)["statistics.total.expense"].firstMatch
+        XCTAssertTrue(expense.waitForExistence(timeout: 10), app.debugDescription)
+        let showsExpense = NSPredicate(format: "value == %@", "12.34 CNY")
+        let expectation = XCTNSPredicateExpectation(predicate: showsExpense, object: expense)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, expense.debugDescription)
         app.buttons["statistics.anomalies.open"].tap()
         let enabled = app.switches["anomalies.enabled"]
         XCTAssertTrue(enabled.waitForExistence(timeout: 10))
