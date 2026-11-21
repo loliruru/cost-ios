@@ -69,7 +69,9 @@ struct EntryView: View {
             .disabled(model.isBusy)
             .navigationTitle(model.existing != nil ? "编辑账单" : (model.draft.sourceTemplateID == nil ? "记一笔" : "从模板记账"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("关闭") { Task { await model.persist(); dismiss() } } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { Task { await model.persist(); dismiss() } }.disabled(model.isBusy)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model.isBusy ? "保存中" : "保存") { Task { if await model.save() { await ledger.reload(); dismiss() } } }
                         .disabled(model.isBusy || model.draft.amount.isEmpty || model.draft.categoryID.isEmpty || model.draft.accountID.isEmpty)
@@ -92,7 +94,7 @@ struct EntryView: View {
     }
 
     private var valuationSection: some View {
-        Section("本位币估值 · \(model.draft.baseCurrencyCode)") {
+        Section {
             if let existing = model.existing, existing.original.currencyCode.rawValue == model.draft.currencyCode {
                 LabeledContent("已冻结金额", value: existing.convertedBase.plainText + " " + existing.convertedBase.currencyCode.rawValue)
             }
@@ -111,6 +113,8 @@ struct EntryView: View {
                         .accessibilityIdentifier("entry.confirmQuote")
                 }
             }
+        } header: {
+            Text("本位币估值 · \(model.draft.baseCurrencyCode)")
         } footer: {
             Text(crypto ? "市场参考价需主动获取。过去的账单请填写实际单价或结算金额。"
                 : "实际结算金额优先于手工汇率。未填写时，保存会查询对应业务日。最新报价按数据时间计算，超过 5 分钟标为过期。")

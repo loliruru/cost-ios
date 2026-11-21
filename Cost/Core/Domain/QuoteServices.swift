@@ -41,6 +41,8 @@ enum QuoteFreshness {
 struct ValuationOffer: Equatable, Sendable {
     let original: CurrencyCode
     let base: CurrencyCode
+    let day: Int64
+    let zoneID: String
     private(set) var snapshot: ExchangeRateSnapshot
     var venue: String? = nil
     var requiresConfirmation: Bool {
@@ -58,16 +60,20 @@ struct ValuationOffer: Equatable, Sendable {
         return updated
     }
 
-    init(_ quote: FiatQuote, method: ValuationMethod) {
+    init(_ quote: FiatQuote, method: ValuationMethod, occurredAt: OccurredAt) {
         original = quote.original
         base = quote.base
+        day = occurredAt.localEpochDay
+        zoneID = occurredAt.zoneID
         snapshot = ExchangeRateSnapshot(rate: quote.rate, providerID: quote.providerID,
             dataTimestamp: quote.dataTimestamp, fetchedAt: quote.fetchedAt, method: method)
     }
 
-    init(_ quote: MarketQuote, method: ValuationMethod) {
+    init(_ quote: MarketQuote, method: ValuationMethod, occurredAt: OccurredAt) {
         original = quote.asset
         base = quote.base
+        day = occurredAt.localEpochDay
+        zoneID = occurredAt.zoneID
         venue = quote.venue
         snapshot = ExchangeRateSnapshot(rate: quote.price, providerID: quote.providerID,
             dataTimestamp: quote.dataTimestamp, fetchedAt: quote.fetchedAt, method: method)
@@ -148,12 +154,13 @@ struct QuoteServices: RecurringFiatProvider {
         if type == .crypto {
             guard occurredAt.localEpochDay == today else { throw QuoteFailure.cryptoHistorical }
             let quote = try await market(original: original, base: base, refresh: refresh)
-            return ValuationOffer(quote, method: QuoteFreshness.isFresh(quote, now: now()) ? .marketPrice : .cachedMarketPrice)
+            return ValuationOffer(quote, method: QuoteFreshness.isFresh(quote, now: now()) ? .marketPrice : .cachedMarketPrice, occurredAt: occurredAt)
         }
         let past = occurredAt.localEpochDay < today
         if past {
             do {
-                return ValuationOffer(try await historical(original: original, base: base, epochDay: occurredAt.localEpochDay), method: .historical)
+                return ValuationOffer(try await historical(original: original, base: base, epochDay: occurredAt.localEpochDay),
+                    method: .historical, occurredAt: occurredAt)
             } catch let failure as QuoteFailure where failure.permitsFallback { }
         }
         let quote: FiatQuote
@@ -165,7 +172,7 @@ struct QuoteServices: RecurringFiatProvider {
         let instant = now()
         guard quote.dataTimestamp <= instant, quote.fetchedAt <= instant else { throw QuoteFailure.malformedResponse }
         return ValuationOffer(quote, method: QuoteFreshness.isFresh(quote, now: instant)
-            ? (past ? .currentFallback : .latest) : .cachedFallback)
+            ? (past ? .currentFallback : .latest) : .cachedFallback, occurredAt: occurredAt)
     }
 
     private func market(original: CurrencyCode, base: CurrencyCode, refresh: Bool) async throws -> MarketQuote {

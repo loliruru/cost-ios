@@ -57,7 +57,13 @@ final class AppContainer {
             let visuals = ManagedVisualStore(database: database, root: mediaRoot)
             let preferences = PrivateBaseCurrencyPreferences(suiteName: draftSuite)
             let base = try await preferredBaseCurrency(preferences, in: repositories.currencies)
-            let credentials = KeychainQuoteCredentials()
+            let credentials: any QuoteCredentials
+            #if DEBUG
+            if draftSuite != nil { credentials = UITestQuoteCredentials() }
+            else { credentials = KeychainQuoteCredentials() }
+            #else
+            credentials = KeychainQuoteCredentials()
+            #endif
             let provider = TwelveDataQuotes(credentials: credentials, transport: TwelveDataTransport(), now: recurringEnvironment.now)
             let quotes = QuoteServices(credentials: credentials, fiatProvider: provider, marketProvider: provider,
                 fiatCache: repositories.fiatQuotes, marketCache: repositories.marketQuotes, now: recurringEnvironment.now)
@@ -113,3 +119,11 @@ final class AppContainer {
     }
     #endif
 }
+
+#if DEBUG
+private actor UITestQuoteCredentials: QuoteCredentials {
+    private var key: String?
+    func apiKey() -> String? { key }
+    func setAPIKey(_ key: String?) { self.key = key }
+}
+#endif

@@ -125,6 +125,56 @@ struct Phase7QuoteTests {
         #expect(transaction.exchangeRate.method == .actualSettlement && transaction.exchangeRate.dataTimestamp == nil)
     }
 
+    @Test func staleCryptoQuoteRequiresConfirmationAndNeverAppliesToAnEarlierDate() async throws {
+        let db = GRDBLedgerRepository(database: try AppDatabase.inMemory())
+        let transport = StubQuoteTransport([.response(200,
+            #"{"symbol":"BTC/CNY","exchange":"Fixture","close":"400000.00000000001","timestamp":1799999699}"#)])
+        let key = StubQuoteCredentials()
+        let client = provider(transport, credentials: key)
+        let quotes = QuoteServices(credentials: key, fiatProvider: client, marketProvider: client, fiatCache: db, marketCache: db, now: { Self.now })
+        let today = try OccurredAt(epochMillis: Self.now, zoneID: "UTC")
+        let yesterday = try OccurredAt(epochMillis: Self.now - 86_400_000, zoneID: "UTC")
+        let offer = try await quotes.offer(original: btc, base: cny, type: .crypto, occurredAt: today)
+        #expect(offer.requiresConfirmation && offer.snapshot.method == .cachedMarketPrice)
+        let amount = try Money.parse("0.00000201", currencyCode: btc, scale: 8)
+        #expect(throws: QuoteFailure.confirmationRequired) {
+            try EntryValuation.resolve(original: amount, base: cny, scale: 2, type: .crypto, occurredAt: today, now: Self.now, offer: offer)
+        }
+        let result = try EntryValuation.resolve(original: amount, base: cny, scale: 2, type: .crypto, occurredAt: today,
+            now: Self.now, offer: offer, confirmed: true)
+        #expect(result.converted.minorUnits == 80 && result.crypto?.venue == "Fixture")
+        await #expect(throws: QuoteFailure.cryptoHistorical) { try await quotes.offer(original: btc, base: cny, type: .crypto, occurredAt: yesterday) }
+        #expect(await transport.trace().requests.count == 1)
+    }
+
+    @Test func foreignTemplateUsesLatestOnceAndAtomicallyRecordsUsage() async throws {
+        let db = GRDBLedgerRepository(database: try AppDatabase.inMemory())
+        let transport = StubQuoteTransport([.response(200,
+            #"{"symbol":"USD/CNY","rate":"7.125","timestamp":1799999999}"#)])
+        let key = StubQuoteCredentials()
+        let client = provider(transport, credentials: key)
+        let quotes = QuoteServices(credentials: key, fiatProvider: client, marketProvider: client, fiatCache: db, marketCache: db, now: { Self.now })
+        let manage = ManageQuickTemplatesUseCase(templates: db, transactions: db, currencies: db,
+            categories: db, accounts: db, tags: db, environment: LedgerEnvironment(now: { Self.now }, zoneID: { "UTC" }), quotes: quotes)
+        var draft = QuickTemplateDraft()
+        draft.name = "USD fixture"
+        draft.currencyCode = "USD"
+        draft.amount = "2.00"
+        draft.categoryID = "seed-expense-other"
+        draft.accountID = "seed-default-account"
+        let template = try await manage.save(draft)
+        let first = try await manage.record(templateID: template.id, requestID: "fixture-use")
+        let replay = try await manage.record(templateID: template.id, requestID: "fixture-use")
+        guard case .recorded(let transaction) = first, case .recorded(let repeated) = replay else {
+            Issue.record("A fresh Fiat quote should record the template")
+            return
+        }
+        #expect(transaction == repeated && transaction.convertedBase.minorUnits == 1425)
+        #expect(transaction.exchangeRate.method == .latest)
+        #expect(try await db.quickTemplate(id: template.id)?.usageCount == 1)
+        #expect(await transport.trace().requests.count == 1)
+    }
+
     private func provider(_ transport: StubQuoteTransport, credentials: StubQuoteCredentials) -> TwelveDataQuotes {
         TwelveDataQuotes(credentials: credentials, transport: transport, now: { Self.now }, delay: { await transport.logDelay($0) })
     }

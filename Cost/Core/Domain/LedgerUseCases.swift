@@ -84,7 +84,7 @@ struct SaveEntryUseCase: Sendable {
             valuation = EntryValuation(converted: existing.convertedBase, rate: existing.exchangeRate, crypto: existing.crypto)
         } else {
             valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: currency.assetType,
-                actualText: actual, rateText: manual, offer: offer, confirmed: confirmed)
+                occurredAt: occurredAt, now: environment.now(), actualText: actual, rateText: manual, offer: offer, confirmed: confirmed)
         }
         let timestamp = try environment.timestamp(after: existing?.updatedAt)
         let row = try LedgerTransaction(id: existing?.id ?? draft.id, type: draft.type,

@@ -114,14 +114,16 @@ struct ManageQuickTemplatesUseCase: Sendable {
         let valuation: EntryValuation
         if content.amount.currencyCode == base {
             money = try content.amount.rescaled(to: draft.baseScale)
-            valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat)
+            valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat,
+                occurredAt: occurred, now: environment.now())
         } else {
             guard let quotes else { return .needsValuation(draft) }
             money = content.amount
             do {
                 let offer = try await quotes.offer(original: money.currencyCode, base: base, type: .fiat, occurredAt: occurred)
                 if offer.requiresConfirmation { return .needsValuation(draft) }
-                valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat, offer: offer)
+                valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat,
+                    occurredAt: occurred, now: environment.now(), offer: offer)
             } catch is QuoteFailure { return .needsValuation(draft) }
         }
         try Task.checkCancellation()
