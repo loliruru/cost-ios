@@ -71,7 +71,7 @@ final class LedgerUITests: XCTestCase {
     }
 
     @MainActor
-    func testCoverageActionsAndToday'sPartialAmountStaySeparateFromFrequency() {
+    func testCoverageActionsAndTodayPartialAmountStaySeparateFromFrequency() {
         let app = launch(anomalyFixture: true)
         app.tabBars.buttons["统计"].tap()
         let anomaly = app.buttons["statistics.anomalies.open"]
@@ -104,6 +104,7 @@ final class LedgerUITests: XCTestCase {
         let recent = app.descendants(matching: .any)["frequency.recent"].firstMatch
         reveal(recent, in: app)
         assertLabel(recent, contains: "1 个支出日 · 1 个覆盖日")
+        assertLabel(recent, contains: "2026/11/16 至 2026/11/22")
 
         if !open.isHittable { app.swipeDown() }
         reveal(open, in: app)
@@ -115,6 +116,13 @@ final class LedgerUITests: XCTestCase {
         app.navigationBars["记账覆盖"].buttons.firstMatch.tap()
         reveal(recent, in: app)
         assertLabel(recent, contains: "0 个支出日 · 0 个覆盖日")
+
+        let month = app.segmentedControls.buttons["近 30 天"].firstMatch
+        for _ in 0..<5 where !month.isHittable { app.swipeDown() }
+        XCTAssertTrue(month.isHittable, app.debugDescription)
+        month.tap()
+        reveal(recent, in: app)
+        assertLabel(recent, contains: "2026/10/24 至 2026/11/22")
     }
 
     @MainActor
