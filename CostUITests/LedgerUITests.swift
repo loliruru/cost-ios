@@ -110,8 +110,11 @@ final class LedgerUITests: XCTestCase {
         XCTAssertTrue(anomaly.waitForExistence(timeout: 10))
         anomaly.tap()
         let provisional = app.descendants(matching: .any)["anomalies.provisional"].firstMatch
-        reveal(provisional, in: app)
-        XCTAssertTrue(provisional.label.contains("今日累计"))
+        for _ in 0..<4 {
+            if provisional.waitForExistence(timeout: 3) { break }
+            app.swipeUp()
+        }
+        assertLabel(provisional, contains: "今日累计")
 
         let open = app.buttons["coverage.open"]
         reveal(open, in: app)
