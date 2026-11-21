@@ -2,6 +2,24 @@ import Testing
 @testable import Cost
 
 struct SpendingAnomaliesTests {
+    @Test func fiveRecentSpendingDaysBecomeBaselineOnlyAfterLeavingTheDetectionWindow() throws {
+        let code = try CurrencyCode("CNY")
+        let history = (96...100).map { sample("recent-\($0)", day: Int64($0), units: "100") }
+        let rows = history + [sample("spike", day: 106, units: "1000")]
+        let input = AnomalyInput(transactions: rows, daily: rows.map(daily), feedback: [])
+
+        let recent = AnomalyRequest(today: 100, window: .week, currency: code, sensitivity: .normal)
+        #expect(DetectSpendingAnomalies.detect(recent, input: input).status == .insufficientData)
+
+        let fourHistoricalDays = AnomalyRequest(today: 106, window: .week, currency: code, sensitivity: .normal)
+        #expect(DetectSpendingAnomalies.detect(fourHistoricalDays, input: input).status == .insufficientData)
+
+        let fiveHistoricalDays = AnomalyRequest(today: 107, window: .week, currency: code, sensitivity: .normal)
+        let result = DetectSpendingAnomalies.detect(fiveHistoricalDays, input: input)
+        #expect(result.status == .ready)
+        #expect(result.findings.contains { $0.transactionID == "spike" && $0.activeSamples == 5 })
+    }
+
     @Test func exactThresholdUsesActiveMedianAndChoosesNinetyDaysOnlyWhenNeeded() throws {
         let code = try CurrencyCode("CNY")
         let request = AnomalyRequest(today: 100, window: .week, currency: code, sensitivity: .normal)

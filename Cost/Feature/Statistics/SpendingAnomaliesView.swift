@@ -9,8 +9,8 @@ struct SpendingAnomaliesView: View {
             if let preferences = model.preferences {
                 settings(preferences)
                 if preferences.enabled {
-                    Section("候选期间") {
-                        Picker("候选期间", selection: $model.anomalyWindow) {
+                    Section("检测期间") {
+                        Picker("检测期间", selection: $model.anomalyWindow) {
                             ForEach(AnomalyWindow.allCases) { Text("近 \($0.rawValue) 天").tag($0) }
                         }.pickerStyle(.segmented)
                         LabeledContent("冻结本位币", value: model.currency.rawValue)
@@ -64,7 +64,17 @@ struct SpendingAnomaliesView: View {
             Section("检测结果") {
                 switch result.status {
                 case .sampleLimit: Text("样本超过 2,000 笔，无法完成检测。")
-                case .insufficientData: Text("基线数据不足，至少需要 5 笔或 5 个活跃日。")
+                case .insufficientData:
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("基线数据不足").font(.headline)
+                        if let start = model.detectionQuery?.request.start {
+                            let cutoff = StatisticsDisplay.range(start..<(start + 1))
+                            Text("基线取 \(cutoff) 之前最多 90 天内的非周期支出。")
+                        }
+                        Text("单笔检测需要同一分类至少 5 笔支出。单日检测需要至少 5 个有支出的日期，单日分类检测按分类分别计数。")
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("anomalies.insufficientBaseline")
                 case .ready:
                     if result.findings.isEmpty { Text("未发现异常开支") }
                     else { Text("共 \(result.totalFindings) 项，显示最近 \(result.findings.count) 项") }

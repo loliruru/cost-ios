@@ -56,6 +56,9 @@ final class LedgerUITests: XCTestCase {
         app.buttons["statistics.anomalies.open"].tap()
         let enabled = app.switches["anomalies.enabled"]
         XCTAssertTrue(enabled.waitForExistence(timeout: 10))
+        let baselineHint = app.descendants(matching: .any)["anomalies.insufficientBaseline"].firstMatch
+        XCTAssertTrue(baselineHint.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(baselineHint.label.contains("之前最多 90 天"), baselineHint.debugDescription)
         let control = enabled.switches.firstMatch
         if control.exists {
             control.tap()
