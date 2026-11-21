@@ -32,6 +32,8 @@ struct EntryDraft: Codable, Equatable, Sendable {
     var tagIDs: Set<String> = []
     var editingUpdatedAt: Int64?
     var sourceTemplateID: String?
+    var actualBaseAmount: String?
+    var manualRate: String?
     var type: TransactionType {
         get { TransactionType(rawValue: typeRaw) ?? .expense }
         set { typeRaw = newValue.rawValue }
@@ -56,26 +58,45 @@ struct SaveEntryUseCase: Sendable {
     let currencies: any CurrencyRepository
     var environment = LedgerEnvironment()
 
-    func save(_ draft: EntryDraft, existing: LedgerTransaction? = nil) async throws -> LedgerTransaction {
-        guard draft.amount.count <= 96, draft.note.count <= 8192, draft.tagIDs.count <= 100 else { throw LedgerError.invalidField("inputLimit") }
+    func save(_ draft: EntryDraft, existing: LedgerTransaction? = nil, offer: ValuationOffer? = nil,
+              confirmed: Bool = false) async throws -> LedgerTransaction {
+        guard draft.amount.count <= 96, draft.note.count <= 8192, draft.tagIDs.count <= 100,
+              (draft.actualBaseAmount?.count ?? 0) <= 96, (draft.manualRate?.count ?? 0) <= 80 else {
+            throw LedgerError.invalidField("inputLimit")
+        }
         if let existing, draft.editingUpdatedAt != existing.updatedAt { throw LedgerError.conflict }
         let code = try CurrencyCode(draft.currencyCode)
-        guard let currency = try await currencies.currency(code: code), currency.assetType == .fiat,
+        let base = try CurrencyCode(draft.baseCurrencyCode)
+        guard let currency = try await currencies.currency(code: code),
+              let baseCurrency = try await currencies.currency(code: base), baseCurrency.assetType == .fiat,
+              baseCurrency.isEnabled || existing?.convertedBase.currencyCode == base,
+              draft.sourceTemplateID == nil || currency.assetType == .fiat,
               currency.isEnabled || existing?.original.currencyCode == code else { throw LedgerError.invalidCurrencyType }
-        guard code.rawValue == draft.baseCurrencyCode else { throw LedgerError.invalidSnapshot }
-        let scale = existing?.original.currencyCode == code ? existing!.original.scale : draft.baseScale
+        let scale = code == base ? draft.baseScale : (existing.flatMap { $0.original.currencyCode == code ? $0.original.scale : nil } ?? currency.defaultScale)
         let money = try Money.parse(draft.amount, currencyCode: code, scale: scale)
+        let occurredAt = try OccurredAt(epochMillis: draft.occurredMillis, zoneID: draft.zoneID)
+        let actual = (draft.actualBaseAmount ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let manual = (draft.manualRate ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let valuation: EntryValuation
+        if let existing, money == existing.original, base == existing.convertedBase.currencyCode,
+           draft.baseScale == existing.convertedBase.scale, occurredAt.localEpochDay == existing.occurredAt.localEpochDay,
+           occurredAt.zoneID == existing.occurredAt.zoneID, actual.isEmpty, manual.isEmpty, offer == nil {
+            valuation = EntryValuation(converted: existing.convertedBase, rate: existing.exchangeRate, crypto: existing.crypto)
+        } else {
+            valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: currency.assetType,
+                actualText: actual, rateText: manual, offer: offer, confirmed: confirmed)
+        }
         let timestamp = try environment.timestamp(after: existing?.updatedAt)
         let row = try LedgerTransaction(id: existing?.id ?? draft.id, type: draft.type,
-            original: money, convertedBase: money,
-            exchangeRate: .identity(),
+            original: money, convertedBase: valuation.converted, exchangeRate: valuation.rate,
             categoryID: draft.categoryID, accountID: draft.accountID,
-            occurredAt: OccurredAt(epochMillis: draft.occurredMillis, zoneID: draft.zoneID),
+            occurredAt: occurredAt,
             note: draft.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : draft.note.trimmingCharacters(in: .whitespacesAndNewlines),
             source: existing?.source ?? (draft.sourceTemplateID == nil ? .manual : .template),
             sourceID: existing == nil ? draft.sourceTemplateID : existing?.sourceID,
             requestKey: existing == nil ? draft.requestKey : existing!.requestKey, createdAt: existing?.createdAt ?? timestamp,
-            updatedAt: timestamp, tagIDs: draft.tagIDs)
+            updatedAt: timestamp, tagIDs: draft.tagIDs, crypto: valuation.crypto)
+        try Task.checkCancellation()
         if let existing {
             guard existing.deletedAt == nil, try await transactions.updateTransaction(row, expectedUpdatedAt: existing.updatedAt) else { throw LedgerError.conflict }
             return row

@@ -55,6 +55,12 @@ final class AppContainer {
             }
             #endif
             let visuals = ManagedVisualStore(database: database, root: mediaRoot)
+            let preferences = PrivateBaseCurrencyPreferences(suiteName: draftSuite)
+            let base = try await preferredBaseCurrency(preferences, in: repositories.currencies)
+            let credentials = KeychainQuoteCredentials()
+            let provider = TwelveDataQuotes(credentials: credentials, transport: TwelveDataTransport(), now: recurringEnvironment.now)
+            let quotes = QuoteServices(credentials: credentials, fiatProvider: provider, marketProvider: provider,
+                fiatCache: repositories.fiatQuotes, marketCache: repositories.marketQuotes, now: recurringEnvironment.now)
             try await visuals.cleanup()
             #if DEBUG
             if draftSuite != nil, ProcessInfo.processInfo.arguments.contains("--cost-anomaly-fixture") {
@@ -64,13 +70,14 @@ final class AppContainer {
             let ledger = LedgerViewModel(services: LedgerServices(currencies: repositories.currencies, categories: repositories.categories,
                 accounts: repositories.accounts, tags: repositories.tags, transactions: repositories.transactions,
                 funds: repositories.funds, drafts: PrivateEntryDraftStore(suiteName: draftSuite),
-                visuals: visuals, templates: repositories.templates))
+                visuals: visuals, templates: repositories.templates, quotes: quotes, credentials: credentials,
+                basePreferences: preferences), environment: recurringEnvironment, baseCurrency: base)
             self.ledger = ledger
             recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(), environment: recurringEnvironment)
-            statistics = try StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
+            statistics = StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
                 preferenceStore: PrivateAnomalyPreferences(suiteName: draftSuite),
                 coverageStore: PrivateRecordingCoverageStore(suiteName: draftSuite),
-                currency: CurrencyCode(EntryDraft.defaultBaseCurrencyCode), environment: recurringEnvironment)
+                currency: base.code, environment: recurringEnvironment)
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.

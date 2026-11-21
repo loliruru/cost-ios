@@ -38,6 +38,38 @@ final class LedgerUITests: XCTestCase {
     }
 
     @MainActor
+    func testForeignEntryWithActualSettlementAndKeySetting() {
+        let app = launch()
+        app.tabBars.buttons["设置"].tap()
+        let settings = app.buttons["settings.quotes"]
+        reveal(settings, in: app)
+        settings.tap()
+        XCTAssertTrue(app.secureTextFields["settings.quoteKey"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["账单"].tap()
+        app.buttons["ledger.add"].tap()
+        let picker = app.buttons["entry.currency"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        picker.tap()
+        let usd = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "USD ·")).firstMatch
+        XCTAssertTrue(usd.waitForExistence(timeout: 10))
+        usd.tap()
+        let amount = app.textFields["entry.amount"]
+        amount.tap()
+        amount.typeText("1.23")
+        let actual = app.textFields["entry.actualSettlement"]
+        reveal(actual, in: app)
+        actual.tap()
+        actual.typeText("8.76")
+        app.buttons["entry.save"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.' AND label CONTAINS 'USD'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let frozen = app.descendants(matching: .any)["ledger.frozenBase"].firstMatch
+        reveal(frozen, in: app)
+        XCTAssertTrue([frozen.label, frozen.value as? String ?? ""].joined().contains("8.76 CNY"), frozen.debugDescription)
+    }
+
+    @MainActor
     func testStatisticsUsesFrozenExpenseAndExposesAnomalyControl() {
         let app = launch()
         app.buttons["ledger.add"].tap()

@@ -138,6 +138,7 @@ struct ProcessRecurringRules: Sendable {
     let currencies: any CurrencyRepository
     var provider: any RecurringFiatProvider = UnconfiguredRecurringFiatProvider()
     var environment = LedgerEnvironment()
+    var basePreferences: (any BaseCurrencyPreferences)? = nil
 
     /// Bounded per invocation for background refresh. Foreground callers can drain further batches.
     func runDue(limit: Int = 100, excluding blocked: inout Set<String>) async throws -> Bool {
@@ -175,9 +176,8 @@ struct ProcessRecurringRules: Sendable {
 
     private func prepare(_ work: RecurringWork, now: Int64, historical: Bool) async throws -> RecurringOutcome {
         let content = work.rule.content
-        let baseCode = try CurrencyCode(EntryDraft.defaultBaseCurrencyCode)
+        let base = try await preferredBaseCurrency(basePreferences, in: currencies)
         guard let originalCurrency = try await currencies.currency(code: content.amount.currencyCode),
-              let base = try await currencies.currency(code: baseCode),
               originalCurrency.isEnabled, base.isEnabled, originalCurrency.assetType == .fiat, base.assetType == .fiat else {
             return .failure(.currencyUnavailable, retryable: false)
         }
@@ -205,7 +205,7 @@ struct ProcessRecurringRules: Sendable {
                 try quote.validate()
                 guard quote.original == original.currencyCode, quote.base == base.code,
                       historical ? quote.kind == .historical && quote.rateEpochDay == occurred.localEpochDay :
-                          quote.kind == .latest && quote.dataTimestamp <= now && now < quote.expiresAt && now - quote.dataTimestamp < 300_000
+                          quote.kind == .latest && QuoteFreshness.isFresh(quote, now: environment.now())
                 else { return .failure(.staleQuote, retryable: true) }
                 converted = try quote.rate.convert(original, to: base.code, scale: base.defaultScale)
                 rate = ExchangeRateSnapshot(rate: quote.rate, providerID: quote.providerID, dataTimestamp: quote.dataTimestamp,

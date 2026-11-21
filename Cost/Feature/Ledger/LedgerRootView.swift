@@ -12,6 +12,9 @@ struct LedgerRootView: View {
             LedgerSettingsView(model: model, recurring: recurring).tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }
+        .onChange(of: model.baseCurrency?.code) { _, code in
+            if let code { statistics.updateDefaultCurrency(code) }
+        }
         .ledgerError($model.error)
     }
 }
@@ -29,8 +32,10 @@ struct LedgerSettingsView: View {
                 } label: {
                     Label("周期记账", systemImage: "calendar.badge.clock")
                 }.accessibilityIdentifier("recurring.open")
-                Section("当前版本") {
-                    LabeledContent("本位币", value: "CNY")
+                Section("多币种") {
+                    NavigationLink { CurrencySettingsView(ledger: model) } label: {
+                        Label("币种与报价", systemImage: "arrow.left.arrow.right.circle")
+                    }.accessibilityIdentifier("settings.quotes")
                 }
             }.navigationTitle("设置")
         }
@@ -200,8 +205,8 @@ struct LedgerDetailView: View {
                 }
                 Section("冻结估值") {
                     LabeledContent("本位币金额", value: row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
-                    LabeledContent("汇率", value: row.exchangeRate.rate.text)
-                    LabeledContent("来源", value: row.exchangeRate.providerID)
+                        .accessibilityIdentifier("ledger.frozenBase")
+                    FrozenQuoteRows(snapshot: row.exchangeRate, venue: row.crypto?.venue)
                 }
                 if managed {
                     Text("这笔损益随本金转账保存和撤销。请在设置 → 资金起点与本金转账中操作。")

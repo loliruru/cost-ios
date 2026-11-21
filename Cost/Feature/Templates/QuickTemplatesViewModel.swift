@@ -19,7 +19,7 @@ final class QuickTemplatesViewModel {
         let services = ledger.services
         return ManageQuickTemplatesUseCase(templates: services.templates, transactions: services.transactions,
             currencies: services.currencies, categories: services.categories, accounts: services.accounts,
-            tags: services.tags, environment: ledger.environment)
+            tags: services.tags, environment: ledger.environment, quotes: services.quotes, basePreferences: services.basePreferences)
     }
 
     func reload() async {
@@ -116,6 +116,7 @@ final class QuickTemplateEditorModel {
         self.templates = templates
         self.existing = existing
         let ledger = templates.ledger
+        draft.currencyCode = ledger.baseCurrency?.code.rawValue ?? EntryDraft.defaultBaseCurrencyCode
         draft.accountID = ledger.accounts.first { $0.isDefault && !$0.isArchived }?.id ?? ledger.accounts.first { !$0.isArchived }?.id ?? ""
         draft.categoryID = ledger.categories.first { !$0.isArchived && $0.type == .expense }?.id ?? ""
         if let existing {

@@ -42,7 +42,7 @@ final class StatisticsViewModel {
     private let preferenceStore: any AnomalyPreferencesRepository
     private let coverageStore: any RecordingCoverageRepository
     private let environment: LedgerEnvironment
-    private let defaultCurrency: CurrencyCode
+    private var defaultCurrency: CurrencyCode
     private(set) var today: Int64?
     private(set) var currencies: [CurrencyCode]
     private(set) var preset = StatisticsPreset.month
@@ -119,6 +119,13 @@ final class StatisticsViewModel {
 
     func select(_ preset: StatisticsPreset) {
         if preset != .custom { self.preset = preset }
+    }
+
+    func updateDefaultCurrency(_ code: CurrencyCode) {
+        let followedDefault = currency == defaultCurrency
+        defaultCurrency = code
+        if !currencies.contains(code) { currencies.append(code); currencies.sort { $0.rawValue < $1.rawValue } }
+        if followedDefault { currency = code }
     }
 
     func setRange(_ range: StatisticsRange) {

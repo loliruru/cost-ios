@@ -11,10 +11,29 @@ struct LedgerServices: Sendable {
     let drafts: any EntryDraftStore
     let visuals: any ManagedVisualRepository
     let templates: any QuickTemplateRepository
+    var quotes: QuoteServices? = nil
+    var credentials: (any QuoteCredentials)? = nil
+    var basePreferences: (any BaseCurrencyPreferences)? = nil
 }
 
 enum LedgerMessage {
     static func text(_ error: Error) -> String {
+        if let failure = error as? QuoteFailure {
+            switch failure {
+            case .notConfigured: return "请在设置中添加 Twelve Data API Key，或填写实际结算金额或手工汇率。"
+            case .credentialsUnavailable: return "暂时无法访问钥匙串，请解锁设备后重试。"
+            case .unauthorized: return "Twelve Data 拒绝访问，请核对 API Key 和币对权限。"
+            case .invalidRequest: return "请检查 API Key 格式或币对是否受支持。"
+            case .noData: return "此币对或日期暂无报价，可填写实际结算金额或手工汇率。"
+            case .offline: return "当前离线，可填写实际结算金额或手工汇率。"
+            case .timeout, .unavailable: return "报价服务暂不可用，请重试或填写手工估值。"
+            case .rateLimited: return "已达 Twelve Data 请求额度，请稍后重试或填写手工估值。"
+            case .malformedResponse: return "报价格式或数据时间无效，可填写手工估值。"
+            case .confirmationRequired: return "请选取并确认报价，或填写实际结算金额或手工估值。"
+            case .cryptoHistorical: return "过去的数字货币账单请填写当时的实际单价或结算金额。"
+            case .futureDate: return "未来日期请填写手工估值。"
+            }
+        }
         if let error = error as? QuickTemplateError {
             switch error {
             case .unavailable: return "模板已停用或删除。"
@@ -50,8 +69,8 @@ enum LedgerMessage {
         case .conflict: return "记录已变化，请重新打开后再操作。草稿已保留。"
         case .managedTransaction: return "这笔损益由本金转账管理，请到账户资金中编辑或撤销整笔转账。"
         case .invalidHierarchy: return "分类最多两级，父子收支类型必须相同。恢复子分类前请先恢复父分类。"
-        case .invalidSnapshot: return "当前阶段仅支持本币记账，外币估值将在多币种阶段提供。草稿已保留。"
-        case .invalidCurrencyType: return "请选择已启用法币。"
+        case .invalidSnapshot: return "估值与账单币种、金额或日期不符，请核对后重试。草稿已保留。"
+        case .invalidCurrencyType: return "请选择已启用的币种。本位币、模板及周期仅支持法币。"
         case .invalidField("templateOrder"): return "排序请输入整数，或留空使用原有顺序。"
         case .invalidField("templateInput"): return "请填写模板名称和金额，并检查输入长度。"
         case .invalidField: return "请检查必填项、单个 emoji、停用状态及输入长度。"
@@ -68,6 +87,7 @@ final class LedgerViewModel {
     var accounts: [Account] = []
     var tags: [Tag] = []
     var currencies: [Currency] = []
+    private(set) var baseCurrency: Currency?
     var rows: [LedgerTransaction] = []
     var positions: [AccountPosition] = []
     var transfers: [AccountTransfer] = []
@@ -79,8 +99,9 @@ final class LedgerViewModel {
     var undoID: String?
     @ObservationIgnored private var generation = 0
 
-    init(services: LedgerServices, environment: LedgerEnvironment = LedgerEnvironment()) {
+    init(services: LedgerServices, environment: LedgerEnvironment = LedgerEnvironment(), baseCurrency: Currency? = nil) {
         self.services = services; self.environment = environment
+        self.baseCurrency = baseCurrency
     }
     func reload() async {
         generation += 1
@@ -91,13 +112,15 @@ final class LedgerViewModel {
             async let accountRows = services.accounts.accounts(includeArchived: true)
             async let tagRows = services.tags.tags(includeArchived: true)
             async let currencyRows = services.currencies.currencies(includeDisabled: false)
+            async let base = preferredBaseCurrency(services.basePreferences, in: services.currencies)
             async let page = services.transactions.searchTransactions(filter)
             async let positionRows = services.funds.positions()
             async let transferRows = services.funds.transfers(limit: 200)
-            let result = try await (categoryRows, accountRows, tagRows, currencyRows, page, positionRows, transferRows)
+            let result = try await (categoryRows, accountRows, tagRows, currencyRows, page, positionRows, transferRows, base)
             guard token == generation, !Task.isCancelled else { return }
             categories = result.0; accounts = result.1; tags = result.2; currencies = result.3
             rows = result.4.rows; nextCursor = result.4.next; positions = result.5; transfers = result.6
+            baseCurrency = result.7
         } catch is CancellationError {} catch { if token == generation { self.error = LedgerMessage.text(error) } }
     }
     func loadMore() async {
@@ -132,6 +155,14 @@ final class LedgerViewModel {
         }
     }
     func categoryName(_ id: String) -> String { categories.first { $0.id == id }?.name ?? "分类不可用" }
+    func setBaseCurrency(_ code: CurrencyCode) async throws {
+        guard let preferences = services.basePreferences, let currency = try await services.currencies.currency(code: code),
+              currency.isEnabled, currency.assetType == .fiat else { throw LedgerError.invalidCurrencyType }
+        await preferences.setBaseCurrencyCode(code.rawValue)
+        generation += 1
+        baseCurrency = currency
+        await reload()
+    }
     func accountName(_ id: String) -> String { accounts.first { $0.id == id }?.name ?? "账户不可用" }
     func managed(id: String) async -> Bool? {
         do { return try await services.transactions.isManagedTransaction(id: id) }

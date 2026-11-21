@@ -12,8 +12,8 @@
 | 3 | 账单/分类/账户/标签/受管视觉/可选账户资金 | 完成（build 4，自动验证与用户真机验收通过） |
 | 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
 | 5 | 周期记账 | 完成（build 6，自动验证通过，2026-11-20 用户确认通过） |
-| 6 | 统计与异常 | 技术完成（build 9，105 项 Swift 测试含 GRDB、7 项 UI 测试、Build / IPA 通过，待真机视觉验收） |
-| 7 | Fiat FX 与 Crypto 基础 | 未开始 |
+| 6 | 统计与异常 | 完成（build 9，自动验证通过，2026-11-21 用户确认通过） |
+| 7 | Fiat FX 与 Crypto 基础 | 实现已提交验证，待构建与验收结果 |
 | 8 | CSV、完整备份与跨平台恢复 | 未开始 |
 | 9 | 原生 Glass 与 UI 精修 | 未开始 |
 | 10 | 全量测试与稳定性 | 未开始 |
@@ -109,6 +109,8 @@ Fiat 模板 CRUD、排序、停用/恢复/确认删除、一键防重和编辑�
 
 0.6.2 / build 9 完成 V1 金额异常、覆盖管理和今日累计临时检测。频率页面提供完整业务日的描述性统计。105 项 Swift 测试（含 4 项统计 GRDB 仓库用例）、7 项原生 UI 测试、模拟器 Build、设备 Archive 与 IPA 下载复核通过。 [CI run 44903195417](https://github.com/loliruru/cost-ios/actions/runs/44903195417)
 
+2026-11-21 用户确认 Phase 6 通过并批准 Phase 7。
+
 ## Phase 7 — 多币种与 Provider
 
 Keychain 设置、Twelve Data Forex v2 `/exchange_rate` dp=11/timezone=UTC、原始 token 精确解析、provider time+5 分钟 freshness、并发去重、typed failure/有界重试、当天 latest/过去 historical/确认 fallback、保存冻结快照。
@@ -116,6 +118,8 @@ Keychain 设置、Twelve Data Forex v2 `/exchange_rate` dp=11/timezone=UTC、原
 Crypto 显式启用、独立 `/quote`/price 类型与缓存、实际扣款/单价/市场优先级、历史日期与 stale 确认；本位币/模板/循环仍限 Fiat，无仓位。打通之前阶段的外币模板/周期分支。
 
 验收：精度端到端、TTL 边界、原始数字/429/5xx/取消/无 key/离线、重复请求、历史不可变、Keychain/日志/导出隔离；固定测试优先，真实契约只在安全配置且显式选择时运行；Build+Test 后提交停止。
+
+实现与真机验收步骤见 [Phase 7 记录](PHASE7_CURRENCIES.md)。
 
 ## Phase 8 — 备份与跨平台兼容
 

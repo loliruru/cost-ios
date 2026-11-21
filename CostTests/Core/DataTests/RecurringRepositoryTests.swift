@@ -135,15 +135,15 @@ struct RecurringRepositoryTests {
         let paused = try #require(pausedRows.first)
         try await repo.setRecurringEnabled(paused, enabled: true, catchUp: .skipMissed, at: Self.now)
 
-        try await drain(process(repo, provider: fixtureQuote(age: 300_000)))
+        try await drain(process(repo, provider: fixtureQuote(age: 300_001)))
         let failures = try await repo.recurringFailures(limit: 10, after: nil)
         let failed = try #require(failures.first)
         #expect(failed.issue == .staleQuote)
         #expect(try await repo.recentTransactions(limit: 10).isEmpty)
-        #expect(try await process(repo, provider: fixtureQuote(age: 299_999)).resolve(failed, skipping: false) == .created)
+        #expect(try await process(repo, provider: fixtureQuote(age: 300_000)).resolve(failed, skipping: false) == .created)
         let bills = try await repo.recentTransactions(limit: 10)
         let foreign = try #require(bills.first)
-        #expect(foreign.exchangeRate.method == .latest && foreign.exchangeRate.dataTimestamp == Self.now - 299_999)
+        #expect(foreign.exchangeRate.method == .latest && foreign.exchangeRate.dataTimestamp == Self.now - 300_000)
     }
 
     private func makeContent(start: Int64, end: Int64, code: String = "CNY") throws -> RecurringContent {

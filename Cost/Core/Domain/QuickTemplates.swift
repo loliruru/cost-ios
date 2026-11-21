@@ -69,6 +69,8 @@ struct ManageQuickTemplatesUseCase: Sendable {
     let accounts: any AccountRepository
     let tags: any TagRepository
     var environment = LedgerEnvironment()
+    var quotes: QuoteServices? = nil
+    var basePreferences: (any BaseCurrencyPreferences)? = nil
 
     func save(_ draft: QuickTemplateDraft, editing existing: QuickTemplate? = nil) async throws -> QuickTemplate {
         let name = draft.name.precomposedStringWithCompatibilityMapping
@@ -105,13 +107,28 @@ struct ManageQuickTemplatesUseCase: Sendable {
         }
         let template = try await availableTemplate(id: templateID)
         let draft = try await prefill(template)
-        guard draft.currencyCode == draft.baseCurrencyCode else { return .needsValuation(draft) }
         let content = template.content
-        let money = try content.amount.rescaled(to: draft.baseScale)
+        let base = try CurrencyCode(draft.baseCurrencyCode)
+        let occurred = try OccurredAt(epochMillis: draft.occurredMillis, zoneID: draft.zoneID)
+        let money: Money
+        let valuation: EntryValuation
+        if content.amount.currencyCode == base {
+            money = try content.amount.rescaled(to: draft.baseScale)
+            valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat)
+        } else {
+            guard let quotes else { return .needsValuation(draft) }
+            money = content.amount
+            do {
+                let offer = try await quotes.offer(original: money.currencyCode, base: base, type: .fiat, occurredAt: occurred)
+                if offer.requiresConfirmation { return .needsValuation(draft) }
+                valuation = try EntryValuation.resolve(original: money, base: base, scale: draft.baseScale, type: .fiat, offer: offer)
+            } catch is QuoteFailure { return .needsValuation(draft) }
+        }
+        try Task.checkCancellation()
         let timestamp = max(draft.occurredMillis, template.createdAt)
         let transaction = try LedgerTransaction(id: draft.id, type: content.type, original: money,
-            convertedBase: money, exchangeRate: .identity(), categoryID: content.categoryID, accountID: content.accountID,
-            occurredAt: OccurredAt(epochMillis: draft.occurredMillis, zoneID: draft.zoneID), note: content.note,
+            convertedBase: valuation.converted, exchangeRate: valuation.rate, categoryID: content.categoryID, accountID: content.accountID,
+            occurredAt: occurred, note: content.note,
             source: .template, sourceID: template.id, requestKey: requestKey, createdAt: timestamp, updatedAt: timestamp, tagIDs: content.tagIDs)
         return .recorded(try await templates.recordQuickTemplateUse(transaction, expecting: content))
     }
@@ -131,10 +148,7 @@ struct ManageQuickTemplatesUseCase: Sendable {
     }
 
     private func prefill(_ template: QuickTemplate) async throws -> EntryDraft {
-        let baseCode = try CurrencyCode(EntryDraft.defaultBaseCurrencyCode)
-        guard let base = try await currencies.currency(code: baseCode), base.assetType == .fiat, base.isEnabled else {
-            throw QuickTemplateError.currencyUnavailable
-        }
+        let base = try await preferredBaseCurrency(basePreferences, in: currencies)
         let content = template.content
         var draft = EntryDraft(id: environment.newID(), requestKey: environment.newID(),
             occurredMillis: environment.now(), zoneID: environment.zoneID())

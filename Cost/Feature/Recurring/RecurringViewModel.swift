@@ -26,7 +26,9 @@ final class RecurringViewModel {
         self.system = system
         remindersEnabled = system.remindersEnabled
         manage = ManageRecurringRules(rules: rules, currencies: ledger.services.currencies, environment: environment)
-        processor = ProcessRecurringRules(rules: rules, currencies: ledger.services.currencies, environment: environment)
+        let provider: any RecurringFiatProvider = ledger.services.quotes.map { $0 as any RecurringFiatProvider } ?? UnconfiguredRecurringFiatProvider()
+        processor = ProcessRecurringRules(rules: rules, currencies: ledger.services.currencies, provider: provider,
+            environment: environment, basePreferences: ledger.services.basePreferences)
     }
 
     func draft(for rule: RecurringRule?) -> RecurringDraft {
@@ -37,6 +39,7 @@ final class RecurringViewModel {
             intervalUnit: .day, weekdaysMask: 1, dayOfMonth: 1, monthOfYear: 1)
         var draft = RecurringDraft(schedule: schedule, existing: rule)
         if rule == nil {
+            draft.currencyCode = ledger.baseCurrency?.code.rawValue ?? EntryDraft.defaultBaseCurrencyCode
             draft.categoryID = categories(for: draft).first?.id ?? ""
             let available = ledger.accounts.filter { !$0.isArchived }
             draft.accountID = (available.first(where: \.isDefault) ?? available.first)?.id ?? ""
