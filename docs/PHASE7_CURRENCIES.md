@@ -8,6 +8,12 @@
 - 模板一键记账使用符合时效的法币报价；需要估值确认或服务不可用时打开可编辑草稿。周期规则只自动接受符合日期或时效的法币报价，其他结果保留待重试或跳过。
 - 复用已有 `fx_quotes`、`crypto_price_quotes` 和交易快照字段，schema 仍为 v1。HTTPS 传输使用 Authorization 请求头、有界响应和重试。Swift 测试使用固定响应，不要求真实凭据。 [Twelve Data Exchange Rate](https://twelvedata.com/docs/currencies#exchange-rate) · [Crypto endpoints](https://twelvedata.com/exchanges/digital_currency)
 
+## 验证结果
+
+- 2026-11-21，源码 `6076078f0d31894d3af0aa2e5974e2c97f6d9de1` 在 Xcode 16.4、Swift 6.1.2 下通过模拟器构建、113 项 Swift 测试、8 项原生 UI 测试、未签名设备 Archive 和 IPA 打包。Phase 7 用例验证原始十进制、有限重试、缓存与时效、请求取消、历史不可变、Crypto 和一键模板事务。原生 UI 用例验证密钥设置入口与外币实际结算后的冻结金额。 [CI](https://github.com/loliruru/cost-ios/actions/runs/44917768260) · [构建与测试证据](https://github.com/loliruru/cost-ios/actions/runs/44917768260/artifacts/14712943225)
+- Windows 静态检查、Android 53 文件只读基线和 6 项 IPA 校验器测试通过。下载的未签名 IPA 为 2,395,805 bytes，arm64 iOS，最低 iOS 18.0。SHA-256 为 `a21a520a9c3f9ebaaaf00603a5b4bb2aa8f67cc090e5340090a32385f1b73944`，与 CI 一致。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44917768260/artifacts/14712499492)
+- 真实 Twelve Data 契约与设备 Keychain 操作待真机验证。CI 使用注入的测试凭据和固定响应。
+
 ## 真机验收
 
 1. 不配置 API Key，录入一笔 USD 账单，分别试手工汇率和实际结算额。看详情中的原币、本位币和来源，再只修改备注并核对快照。

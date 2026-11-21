@@ -110,3 +110,5 @@ stats::mantelhaen.test(x, exact = TRUE, alternative = "greater")$p.value
 2026-11-21，0.6.2 / build 9（源码 `d37539a50b33f8b205f4ca19d7ee23ca7e8d7d8b`）在 Xcode 16.4、Swift 6.1.2 下通过模拟器构建、105 项 hosted Swift 测试、7 项原生 UI 测试及未签名设备 Archive。105 项中包含 4 项统计 GRDB 仓库测试，实际写入并读取测试库，核验冻结币种与精度、完整业务日去重、排除软删除和周期记录，以及重开后的反馈。原生 UI 用例验证覆盖确认、暂停、恢复、标为未知，以及固定时钟下的 7 / 30 天完整日窗口和今日临时标签。跨午夜与 DST 使用注入时钟测试，真机视觉待用户验收。 [CI](https://github.com/loliruru/cost-ios/actions/runs/44903195417) · [测试证据](https://github.com/loliruru/cost-ios/actions/runs/44903195417/artifacts/14707951402)
 
 Windows 静态检查、Android 53 文件只读基线核对和 6 项 IPA 校验器测试通过。下载后的未签名 IPA 为 arm64 iOS，最低 iOS 18.0，共 2,271,184 bytes，SHA-256 为 `a10655c39f21e651648eae1b0286786ed3606cd2e7da1503685a53fd845f2751`，与 CI 一致。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44903195417/artifacts/14707847078)
+
+2026-11-21 用户确认 Phase 6 验收通过，并批准开始 Phase 7。
