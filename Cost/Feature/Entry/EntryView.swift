@@ -38,7 +38,7 @@ struct EntryView: View {
                             Text(model.draft.currencyCode).tag(model.draft.currencyCode)
                         }
                         ForEach(available, id: \.code) { Text($0.code.rawValue + " · " + $0.displayName).tag($0.code.rawValue) }
-                    }.accessibilityIdentifier("entry.currency")
+                    }.pickerStyle(.menu).accessibilityIdentifier("entry.currency")
                     Picker("分类", selection: $model.draft.categoryID) {
                         Text("请选择").tag("")
                         ForEach(ledger.categories.filter { $0.type == model.draft.type && (!$0.isArchived || $0.id == model.existing?.categoryID) }, id: \.id) { category in

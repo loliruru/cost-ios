@@ -205,6 +205,9 @@ struct LedgerDetailView: View {
                 }
                 Section("冻结估值") {
                     LabeledContent("本位币金额", value: row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("本位币金额")
+                        .accessibilityValue(row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
                         .accessibilityIdentifier("ledger.frozenBase")
                     FrozenQuoteRows(snapshot: row.exchangeRate, venue: row.crypto?.venue)
                 }

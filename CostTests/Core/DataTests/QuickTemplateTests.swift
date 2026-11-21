@@ -169,7 +169,7 @@ struct QuickTemplateTests {
         guard case .needsValuation(let foreign) = outcome else { Issue.record("Foreign template wrote a transaction without valuation"); return }
         #expect(foreign.amount == "12.34" && foreign.currencyCode == "USD")
         #expect(foreign.sourceTemplateID == usd.id && foreign.baseCurrencyCode == "CNY")
-        await #expect(throws: LedgerError.invalidSnapshot) { _ = try await save.save(foreign) }
+        await #expect(throws: QuoteFailure.notConfigured) { _ = try await save.save(foreign) }
         #expect(try await repo.recentTransactions().isEmpty)
         #expect(try await repo.quickTemplate(id: usd.id) == usd)
         await #expect(throws: QuickTemplateError.currencyUnavailable) { _ = try await use.save(input(code: "BTC")) }

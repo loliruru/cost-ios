@@ -82,10 +82,15 @@ extension GRDBLedgerRepository: QuickTemplateRepository {
             let template = try Self.requireAvailableTemplate(db, id: templateID)
             guard template.content == content, transaction.type == content.type, transaction.categoryID == content.categoryID,
                   transaction.accountID == content.accountID, transaction.tagIDs == content.tagIDs, transaction.note == content.note,
-                  transaction.exchangeRate.method == .identity, transaction.deletedAt == nil,
-                  try transaction.original == content.amount.rescaled(to: transaction.original.scale) else { throw LedgerError.conflict }
-            let scale = try CurrencyRecord.fetchOne(db, key: transaction.original.currencyCode.rawValue)?.default_scale
-            guard Int64(transaction.original.scale) == scale else { throw LedgerError.conflict }
+                  [.identity, .latest].contains(transaction.exchangeRate.method), transaction.crypto == nil, transaction.deletedAt == nil
+            else { throw LedgerError.conflict }
+            if transaction.exchangeRate.method == .identity {
+                let scale = try CurrencyRecord.fetchOne(db, key: transaction.original.currencyCode.rawValue)?.default_scale
+                guard Int64(transaction.original.scale) == scale,
+                      try transaction.original == content.amount.rescaled(to: transaction.original.scale) else { throw LedgerError.conflict }
+            } else {
+                guard transaction.original == content.amount else { throw LedgerError.conflict }
+            }
             try Self.insertTransaction(db, transaction)
             try Self.changeTemplateUsage(db, transactionID: transaction.id, restoring: true, at: transaction.updatedAt)
             return transaction
