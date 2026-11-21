@@ -106,6 +106,16 @@ struct GRDBAnalyticsRepository: StatisticsRepository, AnomalyRepository {
         }
     }
 
+    func observeExpenseDays(in range: SpendingFrequencyRange, currency: CurrencyCode) -> AsyncThrowingStream<Set<Int64>, Error> {
+        observe { db in
+            let days = range.sampleRange
+            return Set(try Int64.fetchAll(db, sql: """
+                SELECT DISTINCT t.occurred_local_epoch_day FROM transactions t
+                WHERE \(Self.expenseSampleFilter)
+                """, arguments: [currency.rawValue, days.lowerBound, days.upperBound]))
+        }
+    }
+
     func clearAnomalyFeedback() async throws {
         try await GRDBLedgerRepository(database: database).write { db in
             try db.execute(sql: "DELETE FROM anomaly_feedback")

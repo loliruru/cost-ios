@@ -34,7 +34,7 @@ enum AnomalyWindow: Int64, CaseIterable, Identifiable, Sendable {
     var id: Self { self }
 }
 
-enum AnomalyKind: String, Hashable, Sendable {
+enum AnomalyKind: String, CaseIterable, Hashable, Sendable {
     case transaction = "TRANSACTION", day = "DAY", category = "CATEGORY"
 }
 
@@ -85,6 +85,7 @@ struct AnomalyInput: Sendable {
 
 protocol AnomalyRepository: Sendable {
     func observeAnomalyInput(_ request: AnomalyRequest) -> AsyncThrowingStream<AnomalyInput, Error>
+    func observeExpenseDays(in range: SpendingFrequencyRange, currency: CurrencyCode) -> AsyncThrowingStream<Set<Int64>, Error>
     func saveAnomalyFeedback(_ feedback: AnomalyFeedback) async throws
     func clearAnomalyFeedback() async throws
 }
@@ -99,8 +100,10 @@ struct AnomalyFinding: Identifiable, Sendable {
     let currency: CurrencyCode
     let amount: FrozenAmount
     let threshold: FrozenAmount
+    let thresholdIsApproximate: Bool
     let baselineDays: Int64
     let activeSamples: Int
+    let isProvisional: Bool
 
     func feedback(_ type: AnomalyFeedbackType, at timestamp: Int64) -> AnomalyFeedback {
         AnomalyFeedback(id: id, type: type, kind: kind, categoryID: categoryID, currency: currency,
@@ -114,6 +117,7 @@ struct AnomalyResult: Sendable {
     var findings: [AnomalyFinding] = []
     var totalFindings = 0
     var insufficientGroups = 0
+    var sampleCounts: [AnomalyKind: ClosedRange<Int>] = [:]
 }
 
 enum DetectSpendingAnomalies {
@@ -132,12 +136,25 @@ enum DetectSpendingAnomalies {
         let categoryID: String?
     }
 
+    private struct Threshold {
+        let numerator: DecimalInteger
+        let denominator: DecimalInteger
+
+        func isHigher(than other: Self) -> Bool {
+            numerator.multiplied(by: other.denominator) > other.numerator.multiplied(by: denominator)
+        }
+
+        func isExceeded(by units: DecimalInteger) -> Bool {
+            units.multiplied(by: denominator) > numerator
+        }
+    }
+
     static func detect(_ request: AnomalyRequest, input: AnomalyInput) -> AnomalyResult {
         guard input.transactions.count <= sampleLimit, input.daily.count <= sampleLimit else {
             return AnomalyResult(status: .sampleLimit)
         }
         var findings: [AnomalyFinding] = []
-        var assessed = 0
+        var sampleCounts: [AnomalyKind: ClosedRange<Int>] = [:]
         var insufficient = 0
         var names: [String: String] = [:]
         let feedback = input.feedback.filter { $0.currency == request.currency }
@@ -158,25 +175,28 @@ enum DetectSpendingAnomalies {
                 if !candidates.isEmpty { insufficient += 1 }
                 return
             }
-            assessed += 1
-            var values = baseline.map(\.units)
-            if group.kind != .transaction {
-                values.append(contentsOf: repeatElement(.zero, count: Int(days) - baseline.count))
-            }
-            let threshold = threshold(for: values, sensitivity: request.sensitivity)
+            let count = baseline.count
+            let previous = sampleCounts[group.kind] ?? (count...count)
+            sampleCounts[group.kind] = min(previous.lowerBound, count)...max(previous.upperBound, count)
+            let threshold = threshold(for: baseline.map(\.units), sensitivity: request.sensitivity)
+            let display = threshold.numerator.divided(by: threshold.denominator)
             let normal = marked[group] ?? []
-            for sample in candidates where sample.units > threshold {
+            for sample in candidates where threshold.isExceeded(by: sample.units) {
                 let suffix = sample.transactionID.map(part) ?? String(sample.day)
                 let key = "\(group.kind.rawValue):\(request.currency.rawValue):\(part(group.categoryID)):\(suffix)"
                 guard !ignored.contains(key), !isSimilar(sample.units, to: normal) else { continue }
                 findings.append(AnomalyFinding(id: key, day: sample.day, kind: group.kind, categoryID: group.categoryID,
                     categoryName: group.categoryID.flatMap { names[$0] }, transactionID: sample.transactionID,
                     currency: request.currency, amount: FrozenAmount(units: sample.units.divided(by: DecimalInteger("100")).quotient, scale: 18),
-                    threshold: FrozenAmount(units: threshold, scale: workingScale), baselineDays: days, activeSamples: baseline.count))
+                    threshold: FrozenAmount(units: display.quotient, scale: workingScale),
+                    thresholdIsApproximate: !display.remainder.isZero, baselineDays: days, activeSamples: count,
+                    isProvisional: group.kind != .transaction && sample.day == request.today))
             }
         }
 
-        let transactions = Dictionary(grouping: input.transactions.filter { request.sampleRange.contains($0.day) }, by: \.categoryID)
+        let transactions = Dictionary(grouping: input.transactions.filter {
+            request.sampleRange.contains($0.day) && !$0.amount.units.isZero
+        }, by: \.categoryID)
         for (id, rows) in transactions {
             names[id] = rows.first?.categoryName
             assess(Group(kind: .transaction, categoryID: id), samples: rows.map {
@@ -185,7 +205,7 @@ enum DetectSpendingAnomalies {
         }
         var categoryDays: [String: [Int64: DecimalInteger]] = [:]
         var days: [Int64: DecimalInteger] = [:]
-        for row in input.daily where request.sampleRange.contains(row.day) {
+        for row in input.daily where request.sampleRange.contains(row.day) && !row.amount.units.isZero {
             let amount = row.amount.atScale(workingScale)
             let categoryAmount = categoryDays[row.categoryID]?[row.day] ?? .zero
             categoryDays[row.categoryID, default: [:]][row.day] = categoryAmount.adding(amount)
@@ -196,8 +216,9 @@ enum DetectSpendingAnomalies {
             assess(Group(kind: .category, categoryID: id), samples: totals.map { Sample(day: $0.key, units: $0.value) })
         }
         findings.sort { $0.day == $1.day ? $0.id < $1.id : $0.day > $1.day }
-        return AnomalyResult(status: assessed == 0 ? .insufficientData : .ready,
-            findings: Array(findings.prefix(displayLimit)), totalFindings: findings.count, insufficientGroups: insufficient)
+        return AnomalyResult(status: sampleCounts.isEmpty ? .insufficientData : .ready,
+            findings: Array(findings.prefix(displayLimit)), totalFindings: findings.count,
+            insufficientGroups: insufficient, sampleCounts: sampleCounts)
     }
 
     private static func part(_ value: String?) -> String {
@@ -205,24 +226,23 @@ enum DetectSpendingAnomalies {
         return "\(value.utf16.count):\(value)"
     }
 
-    // Values are in 10^-20 major units. Medians and MAD are exact at this precision for inputs
-    // with scale <= 18. Flooring each rational threshold preserves strict comparison with an integer.
-    private static func threshold(for values: [DecimalInteger], sensitivity: AnomalySensitivity) -> DecimalInteger {
+    // Two spare decimal places keep the even-sample median and MAD exact. Keep coefficient
+    // divisions rational until comparison, including the IQR term with denominator 1349.
+    private static func threshold(for values: [DecimalInteger], sensitivity: AnomalySensitivity) -> Threshold {
         let sorted = values.sorted()
         let center = median(sorted)
-        let active = median(sorted.filter { !$0.isZero })
         let mad = median(sorted.map { $0 < center ? center.subtracting($0) : $0.subtracting(center) }.sorted())
         let iqr = sorted[sorted.count * 3 / 4].subtracting(sorted[sorted.count / 4])
         let factor = sensitivity.spreadFactor
-        let ratio = sensitivity.doubleRatio
-        let madSpread = mad.multiplied(by: factor).multiplied(by: DecimalInteger("14826"))
-            .divided(by: DecimalInteger("10000")).quotient
-        let iqrSpread = iqr.multiplied(by: factor).multiplied(by: DecimalInteger("1000"))
-            .divided(by: DecimalInteger("1349")).quotient
-        let activeFloor = active.multiplied(by: ratio).divided(by: DecimalInteger("2")).quotient
-        let meanFloor = sorted.reduce(DecimalInteger.zero) { $0.adding($1) }.multiplied(by: ratio)
-            .divided(by: DecimalInteger(String(2 * sorted.count))).quotient
-        return max(center.adding(max(madSpread, iqrSpread)), max(activeFloor, meanFloor))
+        let madLimit = Threshold(numerator: center.timesPowerOfTen(4)
+            .adding(mad.multiplied(by: factor).multiplied(by: DecimalInteger("14826"))),
+            denominator: DecimalInteger("10000"))
+        let iqrDenominator = DecimalInteger("1349")
+        let iqrLimit = Threshold(numerator: center.multiplied(by: iqrDenominator)
+            .adding(iqr.multiplied(by: factor).timesPowerOfTen(3)), denominator: iqrDenominator)
+        let ratioLimit = Threshold(numerator: center.multiplied(by: sensitivity.doubleRatio), denominator: DecimalInteger("2"))
+        let spreadLimit = madLimit.isHigher(than: iqrLimit) ? madLimit : iqrLimit
+        return spreadLimit.isHigher(than: ratioLimit) ? spreadLimit : ratioLimit
     }
 
     private static func median(_ sorted: [DecimalInteger]) -> DecimalInteger {

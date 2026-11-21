@@ -2,12 +2,13 @@ import XCTest
 
 final class LedgerUITests: XCTestCase {
     @MainActor
-    func launch(largeText: Bool = false, recurringClock: Bool = false) -> XCUIApplication {
+    func launch(largeText: Bool = false, recurringClock: Bool = false, anomalyFixture: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--cost-ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"] }
         if recurringClock { app.launchArguments.append("--cost-recurring-fixed-clock") }
+        if anomalyFixture { app.launchArguments.append("--cost-anomaly-fixture") }
         app.launch()
         XCTAssertTrue(app.buttons["ledger.add"].waitForExistence(timeout: 20))
         return app
@@ -67,6 +68,68 @@ final class LedgerUITests: XCTestCase {
         }
         let disabled = app.descendants(matching: .any)["anomalies.disabled"].firstMatch
         XCTAssertTrue(disabled.waitForExistence(timeout: 10), app.debugDescription)
+    }
+
+    @MainActor
+    func testCoverageActionsAndToday'sPartialAmountStaySeparateFromFrequency() {
+        let app = launch(anomalyFixture: true)
+        app.tabBars.buttons["统计"].tap()
+        let anomaly = app.buttons["statistics.anomalies.open"]
+        XCTAssertTrue(anomaly.waitForExistence(timeout: 10))
+        anomaly.tap()
+        let provisional = app.descendants(matching: .any)["anomalies.provisional"].firstMatch
+        reveal(provisional, in: app)
+        XCTAssertTrue(provisional.label.contains("今日累计"))
+
+        let open = app.buttons["coverage.open"]
+        reveal(open, in: app)
+        open.tap()
+        let start = app.buttons["coverage.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        start.tap()
+        let pause = app.buttons["coverage.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 10))
+        pause.tap()
+        let resume = app.buttons["coverage.resume"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 10))
+        resume.tap()
+        XCTAssertTrue(pause.waitForExistence(timeout: 10))
+
+        let confirm = app.buttons["coverage.confirmDay"]
+        reveal(confirm, in: app)
+        confirm.tap()
+        let selected = app.descendants(matching: .any)["coverage.selectedDay"].firstMatch
+        assertLabel(selected, contains: "该日已确认覆盖")
+        app.navigationBars["记账覆盖"].buttons.firstMatch.tap()
+        let recent = app.descendants(matching: .any)["frequency.recent"].firstMatch
+        reveal(recent, in: app)
+        assertLabel(recent, contains: "1 个支出日 · 1 个覆盖日")
+
+        if !open.isHittable { app.swipeDown() }
+        reveal(open, in: app)
+        open.tap()
+        let unknown = app.buttons["coverage.markUnknown"]
+        reveal(unknown, in: app)
+        unknown.tap()
+        assertLabel(selected, contains: "该日覆盖未知")
+        app.navigationBars["记账覆盖"].buttons.firstMatch.tap()
+        reveal(recent, in: app)
+        assertLabel(recent, contains: "0 个支出日 · 0 个覆盖日")
+    }
+
+    @MainActor
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable, app.debugDescription)
+    }
+
+    @MainActor
+    private func assertLabel(_ element: XCUIElement, contains text: String) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", text), object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, element.debugDescription)
     }
     @MainActor
     func testLargeTextDarkModeDraftRecoveryAndAccessibleSave() throws {

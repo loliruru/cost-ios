@@ -8,17 +8,18 @@ struct SpendingAnomaliesView: View {
         List {
             if let preferences = model.preferences {
                 settings(preferences)
-                if preferences.enabled {
-                    Section("检测期间") {
-                        Picker("检测期间", selection: $model.anomalyWindow) {
-                            ForEach(AnomalyWindow.allCases) { Text("近 \($0.rawValue) 天").tag($0) }
-                        }.pickerStyle(.segmented)
-                        LabeledContent("冻结本位币", value: model.currency.rawValue)
-                    }
-                    findings
-                } else {
+                if !preferences.enabled {
                     Text("异常检测已关闭").accessibilityIdentifier("anomalies.disabled")
                 }
+                Section("期间") {
+                    Picker("期间", selection: $model.anomalyWindow) {
+                        ForEach(AnomalyWindow.allCases) { Text("近 \($0.rawValue) 天").tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    LabeledContent("冻结本位币", value: model.currency.rawValue)
+                }
+                if preferences.enabled { findings }
+                frequencySection
                 Section("历史反馈") {
                     Button("清除异常反馈", role: .destructive) { confirmClear = true }.disabled(model.isSavingFeedback)
                 }
@@ -28,7 +29,9 @@ struct SpendingAnomaliesView: View {
         }
         .navigationTitle("异常开支")
         .task { await model.loadPreferences() }
+        .task { await model.loadCoverage() }
         .task(id: model.detectionQuery) { await model.observeAnomalies(model.detectionQuery) }
+        .task(id: model.frequencyQuery) { await model.observeFrequency(model.frequencyQuery) }
         .confirmationDialog("清除所有异常反馈？", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("清除异常反馈", role: .destructive) { Task { await model.clearFeedback() } }
         } message: {
@@ -79,14 +82,30 @@ struct SpendingAnomaliesView: View {
                     if result.findings.isEmpty { Text("未发现异常开支") }
                     else { Text("共 \(result.totalFindings) 项，显示最近 \(result.findings.count) 项") }
                     if result.insufficientGroups > 0 { Text("\(result.insufficientGroups) 组基线不足，未参与检测。") }
+                    ForEach(AnomalyKind.allCases, id: \.self) { kind in
+                        if let counts = result.sampleCounts[kind] {
+                            let count = counts.lowerBound == counts.upperBound ? "\(counts.lowerBound)" :
+                                "\(counts.lowerBound)–\(counts.upperBound)"
+                            let unit = kind == .transaction ? "笔" : "日"
+                            let note = counts.lowerBound < 10 ? " · 含样本较少的基线" : ""
+                            Text("\(kindTitle(kind))基线 \(count) \(unit)\(note)")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
                 }
                 ForEach(result.findings) { finding in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(findingTitle(finding)).font(.headline)
+                        if finding.isProvisional {
+                            Text("今日累计 · 临时")
+                                .accessibilityIdentifier("anomalies.provisional")
+                        }
                         Text(StatisticsDisplay.range(finding.day..<(finding.day + 1)))
                         Text(StatisticsDisplay.money(finding.amount, currency: finding.currency)).font(.headline)
-                        Text("阈值 \(StatisticsDisplay.money(finding.threshold, currency: finding.currency))")
-                        Text("\(finding.baselineDays) 天基线 · \(finding.activeSamples) 个有效样本")
+                        let threshold = StatisticsDisplay.money(finding.threshold, currency: finding.currency)
+                        Text(finding.thresholdIsApproximate ? "阈值约 \(threshold)" : "阈值 \(threshold)")
+                        let note = finding.activeSamples < 10 ? " · 样本较少" : ""
+                        Text("\(finding.baselineDays) 天基线 · \(finding.activeSamples) 个有效样本\(note)")
                             .foregroundStyle(.secondary)
                         Menu("反馈") {
                             Button("忽略本次") { Task { await model.saveFeedback(.ignoredOnce, for: finding) } }
@@ -97,6 +116,60 @@ struct SpendingAnomaliesView: View {
             }
         } else {
             ProgressView("评估异常开支")
+        }
+    }
+
+    private var frequencySection: some View {
+        Section("支出频率") {
+            if model.coverageLoadFailed {
+                Text("无法读取记账覆盖")
+                Button("重试读取覆盖") { Task { await model.loadCoverage() } }
+            } else if let today = model.today, model.coverage != nil {
+                NavigationLink("管理记账覆盖") { RecordingCoverageView(model: model, today: today) }
+                    .accessibilityIdentifier("coverage.open")
+            }
+
+            if model.frequencyFailed {
+                Text("无法读取支出频率")
+                Button("重试读取频率") { model.frequencyRetry += 1 }
+            } else if let frequency = model.frequency {
+                frequencyRow("近期", frequency.recent, id: "frequency.recent")
+                frequencyRow("历史", frequency.history, id: "frequency.history")
+                ForEach(frequency.issues.indices, id: \.self) { index in
+                    Text(coverageIssue(frequency.issues[index]))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            } else if !model.coverageLoadFailed {
+                ProgressView("读取支出频率")
+            }
+        }
+    }
+
+    private func frequencyRow(_ title: String, _ period: SpendingFrequency.Period, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.headline)
+            Text(StatisticsDisplay.range(period.days)).font(.footnote).foregroundStyle(.secondary)
+            Text("\(period.spendingDays) 个支出日 · \(period.coveredDays) 个覆盖日")
+            Text(period.basisPoints.map(StatisticsDisplay.percent) ?? "暂无比例")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(id)
+    }
+
+    private func coverageIssue(_ issue: SpendingFrequency.CoverageIssue) -> String {
+        switch issue {
+        case .unconfirmed: "请确认记账覆盖。频率使用已确认的完整日期。"
+        case .tooFewRecent(let required): "近期覆盖不足，参考至少需要 \(required) 个完整日。"
+        case .tooFewHistorical: "历史覆盖不足，参考至少需要 28 个完整日。"
+        case .missingWeekdays: "历史中部分对应星期几的覆盖不足 3 次。"
+        }
+    }
+
+    private func kindTitle(_ kind: AnomalyKind) -> String {
+        switch kind {
+        case .transaction: "单笔"
+        case .day: "单日总额"
+        case .category: "单日分类"
         }
     }
 
@@ -114,5 +187,68 @@ struct SpendingAnomaliesView: View {
         case .normal: "标准"
         case .high: "高"
         }
+    }
+}
+
+private struct RecordingCoverageView: View {
+    @Bindable var model: StatisticsViewModel
+    @State private var start: Date
+    @State private var historicalDay: Date
+
+    init(model: StatisticsViewModel, today: Int64) {
+        self.model = model
+        _start = State(initialValue: StatisticsDisplay.date(today + 1))
+        _historicalDay = State(initialValue: StatisticsDisplay.date(today - 1))
+    }
+
+    var body: some View {
+        Form {
+            if let coverage = model.coverage, let today = model.today {
+                Section("记账期间") {
+                    if let activeStart = coverage.activeStart {
+                        let date = StatisticsDisplay.range(activeStart..<(activeStart + 1))
+                        Text(activeStart > today ? "将于 \(date) 开始" : "覆盖自 \(date) 开始")
+                            .accessibilityIdentifier("coverage.active")
+                        Button("暂停覆盖") { save(.pause) }
+                            .accessibilityIdentifier("coverage.pause")
+                        Text("暂停从今日生效。").font(.footnote).foregroundStyle(.secondary)
+                    } else if coverage.hasStarted {
+                        Text("覆盖已暂停").accessibilityIdentifier("coverage.paused")
+                        Button("从明日恢复覆盖") { save(.resume) }
+                            .accessibilityIdentifier("coverage.resume")
+                    } else {
+                        DatePicker("开始日期", selection: $start, in: ...StatisticsDisplay.date(today + 1), displayedComponents: .date)
+                        Button("确认开始覆盖") {
+                            if let day = epochDay(start) { save(.start(day)) }
+                        }.accessibilityIdentifier("coverage.start")
+                        Text("请选择开始完整记账的日期。").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                Section("历史日期") {
+                    DatePicker("日期", selection: $historicalDay, in: ...StatisticsDisplay.date(today - 1), displayedComponents: .date)
+                    if let day = epochDay(historicalDay) {
+                        Text(coverage.contains(day) ? "该日已确认覆盖" : "该日覆盖未知")
+                            .accessibilityIdentifier("coverage.selectedDay")
+                        Button("确认该日完整记账") { save(.confirmDay(day)) }
+                            .accessibilityIdentifier("coverage.confirmDay")
+                        Button("将该日标为未知") { save(.markUnknown(day)) }
+                            .accessibilityIdentifier("coverage.markUnknown")
+                    }
+                }
+            }
+        }
+        .disabled(model.isSavingCoverage)
+        .environment(\.calendar, Calendar.utc)
+        .environment(\.timeZone, Calendar.utc.timeZone)
+        .navigationTitle("记账覆盖")
+        .ledgerError($model.coverageError)
+    }
+
+    private func save(_ action: RecordingCoverage.Action) {
+        Task { await model.updateCoverage(action) }
+    }
+
+    private func epochDay(_ date: Date) -> Int64? {
+        Calendar.utc.dateComponents([.year, .month, .day], from: date).dateEpochDay
     }
 }

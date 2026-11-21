@@ -105,6 +105,42 @@ struct AnalyticsRepositoryTests {
         #expect(result.totalFindings == 0)
     }
 
+    @Test func frequencyReadsDistinctCompleteBusinessDaysAndRecalculatesAfterSoftDeletion() async throws {
+        let database = try AppDatabase.inMemory()
+        let ledger = GRDBLedgerRepository(database: database)
+        let repository = GRDBAnalyticsRepository(database: database)
+        let cny = try CurrencyCode("CNY")
+        let usd = try CurrencyCode("USD")
+        let range = SpendingFrequencyRange(today: 150, window: .week)
+        let rows: [LedgerTransaction] = [
+            try entry("too-old", day: 52, units: 100, code: cny),
+            try entry("history-earliest", day: 53, units: 100, code: cny),
+            try entry("recent-1", day: 143, units: 100, code: cny),
+            try entry("recent-duplicate", day: 143, units: 100, code: cny, scale: 3),
+            try entry("foreign", day: 145, units: 100, code: usd),
+            try entry("removed", day: 146, units: 100, code: cny, deleted: 11),
+            try entry("recurring", day: 147, units: 100, code: cny, source: .recurring),
+            try entry("income", day: 148, units: 100, code: cny, type: .income),
+            try entry("yesterday", day: 149, units: 100, code: cny),
+            try entry("today", day: 150, units: 100, code: cny),
+            try entry("tomorrow", day: 151, units: 100, code: cny)
+        ]
+        try await ledger.write { db in
+            for row in rows { try GRDBLedgerRepository.insertTransaction(db, row) }
+        }
+        var stream = repository.observeExpenseDays(in: range, currency: cny).makeAsyncIterator()
+        let initial = try await stream.next()
+        #expect(initial == [53, 143, 149])
+        let deleted = try await ledger.softDeleteTransaction(id: "yesterday", at: 12)
+        #expect(deleted)
+        let updated = try await stream.next()
+        #expect(updated == [53, 143])
+
+        var other = repository.observeExpenseDays(in: range, currency: usd).makeAsyncIterator()
+        let otherDays = try await other.next()
+        #expect(otherDays == [145])
+    }
+
     private func detect(_ repository: GRDBAnalyticsRepository, _ request: AnomalyRequest) async throws -> AnomalyResult {
         var stream = repository.observeAnomalyInput(request).makeAsyncIterator()
         let input = try await stream.next()

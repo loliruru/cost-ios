@@ -56,6 +56,11 @@ final class AppContainer {
             #endif
             let visuals = ManagedVisualStore(database: database, root: mediaRoot)
             try await visuals.cleanup()
+            #if DEBUG
+            if draftSuite != nil, ProcessInfo.processInfo.arguments.contains("--cost-anomaly-fixture") {
+                try await seedAnomalyFixture(in: repositories.transactions)
+            }
+            #endif
             let ledger = LedgerViewModel(services: LedgerServices(currencies: repositories.currencies, categories: repositories.categories,
                 accounts: repositories.accounts, tags: repositories.tags, transactions: repositories.transactions,
                 funds: repositories.funds, drafts: PrivateEntryDraftStore(suiteName: draftSuite),
@@ -64,6 +69,7 @@ final class AppContainer {
             recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(), environment: recurringEnvironment)
             statistics = try StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
                 preferenceStore: PrivateAnomalyPreferences(suiteName: draftSuite),
+                coverageStore: PrivateRecordingCoverageStore(suiteName: draftSuite),
                 currency: CurrencyCode(EntryDraft.defaultBaseCurrencyCode), environment: recurringEnvironment)
             isReady = true
         } catch {
@@ -82,4 +88,21 @@ final class AppContainer {
         if background { recurring.rearmBackgroundRefresh() }
         await recurring.run(background: background)
     }
+
+    #if DEBUG
+    private func seedAnomalyFixture(in repository: any TransactionRepository) async throws {
+        let now = recurringEnvironment.now()
+        let today = try OccurredAt(epochMillis: now, zoneID: recurringEnvironment.zoneID()).localEpochDay
+        let code = try CurrencyCode(EntryDraft.defaultBaseCurrencyCode)
+        for day in Array((today - 15)...(today - 11)) + [today - 1, today] {
+            let amount = try Money(minorUnits: day == today ? 500 : 100, currencyCode: code, scale: 2)
+            let row = try LedgerTransaction(id: "anomaly-fixture-\(day)", type: .expense, original: amount,
+                convertedBase: amount, exchangeRate: .identity(), categoryID: "seed-expense-other",
+                accountID: "seed-default-account", occurredAt: OccurredAt(epochMillis: day * 86_400_000, zoneID: "UTC"),
+                note: nil, source: .manual, sourceID: nil, requestKey: nil, createdAt: now, updatedAt: now,
+                deletedAt: nil, tagIDs: [])
+            _ = try await repository.createTransaction(row)
+        }
+    }
+    #endif
 }

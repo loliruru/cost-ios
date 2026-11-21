@@ -28,9 +28,19 @@ final class StatisticsViewModel {
         let retry: Int
     }
 
+    struct FrequencyQuery: Equatable, Sendable {
+        let today: Int64
+        let window: AnomalyWindow
+        let currency: CurrencyCode
+        let retry: Int
+
+        var range: SpendingFrequencyRange { SpendingFrequencyRange(today: today, window: window) }
+    }
+
     private let repository: any StatisticsRepository
     private let anomalies: any AnomalyRepository
     private let preferenceStore: any AnomalyPreferencesRepository
+    private let coverageStore: any RecordingCoverageRepository
     private let environment: LedgerEnvironment
     private let defaultCurrency: CurrencyCode
     private(set) var today: Int64?
@@ -41,20 +51,29 @@ final class StatisticsViewModel {
     private(set) var reportFailed = false
     private(set) var detection: AnomalyResult?
     private(set) var detectionFailed = false
+    private(set) var coverage: RecordingCoverage?
+    private(set) var coverageLoadFailed = false
+    private(set) var frequencyFailed = false
+    private(set) var isSavingCoverage = false
+    private var observedFrequency: (query: FrequencyQuery, days: Set<Int64>)?
     private(set) var preferences: AnomalyPreferences?
     private(set) var isSavingFeedback = false
     private(set) var isSavingPreferences = false
     var currency: CurrencyCode
     var anomalyWindow = AnomalyWindow.week
     var feedbackError: String?
+    var coverageError: String?
     var statisticsRetry = 0
     var anomalyRetry = 0
+    var frequencyRetry = 0
 
     init(repository: any StatisticsRepository, anomalies: any AnomalyRepository,
-         preferenceStore: any AnomalyPreferencesRepository, currency: CurrencyCode, environment: LedgerEnvironment) {
+         preferenceStore: any AnomalyPreferencesRepository, coverageStore: any RecordingCoverageRepository,
+         currency: CurrencyCode, environment: LedgerEnvironment) {
         self.repository = repository
         self.anomalies = anomalies
         self.preferenceStore = preferenceStore
+        self.coverageStore = coverageStore
         self.environment = environment
         defaultCurrency = currency
         self.currency = currency
@@ -79,8 +98,23 @@ final class StatisticsViewModel {
             sensitivity: preferences.sensitivity), retry: anomalyRetry)
     }
 
+    var frequencyQuery: FrequencyQuery? {
+        guard let today else { return nil }
+        return FrequencyQuery(today: today, window: anomalyWindow, currency: currency, retry: frequencyRetry)
+    }
+
+    var frequency: SpendingFrequency? {
+        guard let coverage, let observedFrequency, observedFrequency.query == frequencyQuery else { return nil }
+        return SpendingFrequency(range: observedFrequency.query.range, coverage: coverage, expenseDays: observedFrequency.days)
+    }
+
     func refreshDay() {
-        today = try? OccurredAt(epochMillis: environment.now(), zoneID: environment.zoneID()).localEpochDay
+        let current = try? OccurredAt(epochMillis: environment.now(), zoneID: environment.zoneID()).localEpochDay
+        guard today != current else { return }
+        today = current
+        detection = nil
+        detectionFailed = false
+        frequencyFailed = false
     }
 
     func select(_ preset: StatisticsPreset) {
@@ -112,6 +146,46 @@ final class StatisticsViewModel {
     func loadPreferences() async {
         guard preferences == nil else { return }
         preferences = await preferenceStore.load()
+    }
+
+    func loadCoverage() async {
+        guard coverage == nil else { return }
+        coverageLoadFailed = false
+        do {
+            let stored = try await coverageStore.load()
+            if coverage == nil { coverage = stored }
+        } catch {
+            if coverage == nil { coverageLoadFailed = true }
+        }
+    }
+
+    func updateCoverage(_ action: RecordingCoverage.Action) async {
+        refreshDay()
+        guard !isSavingCoverage, var next = coverage, let today else { return }
+        isSavingCoverage = true
+        defer { isSavingCoverage = false }
+        do {
+            try next.apply(action, today: today)
+            try await coverageStore.save(next)
+            coverage = next
+        } catch {
+            coverageError = "无法保存记账覆盖，请重试。"
+        }
+    }
+
+    func observeFrequency(_ query: FrequencyQuery?) async {
+        guard frequencyQuery == query else { return }
+        observedFrequency = nil
+        frequencyFailed = false
+        guard let query else { return }
+        do {
+            for try await days in anomalies.observeExpenseDays(in: query.range, currency: query.currency) {
+                guard !Task.isCancelled, frequencyQuery == query else { return }
+                observedFrequency = (query, days)
+            }
+        } catch {
+            if !Task.isCancelled, frequencyQuery == query { frequencyFailed = true }
+        }
     }
 
     func setPreferences(_ preferences: AnomalyPreferences) {
