@@ -181,7 +181,7 @@ struct PortableDataTests {
             amount: sampleAmount, categoryID: "seed-expense-other", accountID: account.id, note: nil, tagIDs: [tag.id])
         _ = try await ledger.records.saveQuickTemplate(id: "sample-template", content: template, sortOrder: nil,
             expectedUpdatedAt: nil, at: 1000)
-        let content = try RecurringContent(name: "合成规则", type: .expense,
+        let content = RecurringContent(name: "合成规则", type: .expense,
             amount: sampleAmount, categoryID: "seed-expense-other", accountID: account.id, note: nil, tagIDs: [tag.id],
             schedule: RecurringSchedule(startDay: 1, endDay: 1, minutes: 0, zoneID: "UTC"), catchUp: .createMissed)
         try await ledger.records.saveRecurringRule(id: "sample-rule", content: content, expectedVersion: nil, at: 1000)

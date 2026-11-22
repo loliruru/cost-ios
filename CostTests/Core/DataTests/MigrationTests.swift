@@ -105,7 +105,7 @@ struct MigrationTests {
         let tag = TestLedger.tag()
         let transaction = try TestLedger.transaction(code: "USD", rate: "7.250000000001", method: .manualRate,
             requestKey: "legacy-request", tags: [tag.id], note: "旧版冻结估值")
-        try legacy.write { db in
+        try await legacy.write { db in
             try seed.install(in: db)
             try db.execute(sql: "UPDATE accounts SET name = '旧版账户' WHERE id = 'seed-default-account'")
             try TagRecord(tag).insert(db)
