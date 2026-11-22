@@ -11,9 +11,13 @@
 
 ## 自动验证
 
-CI 使用 Xcode 26.3 及 iOS 26 模拟器运行 Swift 和 UI 测试，并在 iOS 18 模拟器复跑普通字号导航和深色最大辅助字号录入。减少透明度、增强对比度和减少动态效果的策略由 Swift 测试覆盖。
+- 2026-11-22，Xcode 26.3 使用源码 `6c7dbbc` 完成模拟器构建、119 项 Swift 测试、iOS 26.2 模拟器的 10 项 UI 测试及未签名设备 Archive。iOS 18.6 模拟器复跑普通字号导航及深色最大辅助字号录入，两项均通过。降低透明度、增强对比度和减少动态效果的策略由 Swift 测试覆盖。 [CI](https://github.com/loliruru/cost-ios/actions/runs/44995838406) [测试日志](https://github.com/loliruru/cost-ios/actions/runs/44995838406/artifacts/14744607457)
+- iOS 26 首轮 UI 测试发现详情的编辑按钮会落到首屏外，周期删除确认会生成同名的嵌套无障碍节点。编辑入口移至工具栏，删除确认测试按稳定标识定位，复跑通过。 [首轮日志](https://github.com/loliruru/cost-ios/actions/runs/44994093602)
+- 在 Windows 下载复核了最低支持 iOS 18.0 的未签名 arm64 IPA。主图标指向白龙女孩插画的 AppIcon 资源，包内有编译后的资产目录和图标文件。IPA 共 5,321,095 字节，SHA-256 为 `ee30e9060cfab4536c0d9ad024bdbaf0d142f7968159c7b36609de4dabd93621`，与 CI 一致。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44995838406/artifacts/14744183398)
 
 ## 真机验收
+
+待用户确认真机材质、布局、动效、触觉和 VoiceOver 流程。
 
 1. 在 iOS 26 用测试账目切换账单、模板、统计和设置。检查两种外观下的 App 图标、导航和底部操作。滚动账单时核对文字和金额的对比度。
 2. 打开「记一笔」，展开详情、输入金额并在键盘打开时保存。用最大辅助字号复测，核对收支菜单、分类、冻结金额和关闭、保存按钮。关闭草稿后再打开并确认内容保留。
