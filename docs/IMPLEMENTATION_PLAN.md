@@ -16,7 +16,7 @@
 | 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
 | 8 | CSV、完整备份与跨平台恢复 | 通过（用户确认，真机 Files 与 Android 应用互导未测试） |
 | 9 | 原生 Glass 与 UI 精修 | 完成（0.9.1 / build 13，2026-11-22 用户确认通过） |
-| 10 | 全量测试与稳定性 | 回归用例已补齐，Windows 检查通过，待 Xcode 与 GitHub Actions 验证 |
+| 10 | 全量测试与稳定性 | 回归用例已补齐，Windows 检查通过，准备验证 1.0.0 / build 14 |
 
 ## 共用交付门禁
 
@@ -164,4 +164,4 @@ Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryp
 
 2026-11-22，Windows 通过 Foundation、数据层检查、6 项 IPA 校验器测试和 Git diff 空白检查。额外的 Windows SQLite 检查使用正式 schema 和 1,200 条合成行，核对六页排序及 1,480,800 最小单位的汇总，并核对交换 schema 的 17 张表和 v1–v10 列注册表。
 
-Phase 9 基线 CI 耗时约 35 分钟，冷构建、全量 UI 测试和归档分别超过 5 分钟。Windows 没有 Xcode，Phase 10 未触发这条完整工作流。Swift 测试、模拟器 UI、编译诊断复核、设备归档和 Swift 备份一致性仍待验证。按用户时限，本阶段跳过 24 小时真机稳定性观察。 [Phase 9 基线 CI](https://github.com/loliruru/cost-ios/actions/runs/45003933408)
+Phase 9 基线 CI 耗时约 35 分钟，首轮 Phase 10 工作按 5 分钟上限完成 Windows 检查。用户随后批准执行完整 CI，只跳过 24 小时真机稳定性观察。Phase 10 验证包使用 1.0.0 / build 14。 [Phase 9 基线 CI](https://github.com/loliruru/cost-ios/actions/runs/45003933408)
