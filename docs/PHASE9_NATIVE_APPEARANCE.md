@@ -1,6 +1,6 @@
 # Phase 9 — 原生 Glass 与 UI 精修
 
-用户于 2026-11-22 批准执行。版本为 0.9.0 / build 12，最低部署 iOS 18.0。
+用户于 2026-11-22 批准执行。首个版本为 0.9.0 / build 12，草稿修复版为 0.9.1 / build 13，最低部署 iOS 18.0。
 
 ## 界面
 
@@ -14,6 +14,12 @@
 - 2026-11-22，Xcode 26.3 使用源码 `6c7dbbc` 完成模拟器构建、119 项 Swift 测试、iOS 26.2 模拟器的 10 项 UI 测试及未签名设备 Archive。iOS 18.6 模拟器复跑普通字号导航及深色最大辅助字号录入，两项均通过。降低透明度、增强对比度和减少动态效果的策略由 Swift 测试覆盖。 [CI](https://github.com/loliruru/cost-ios/actions/runs/44995838406) [测试日志](https://github.com/loliruru/cost-ios/actions/runs/44995838406/artifacts/14744607457)
 - iOS 26 首轮 UI 测试发现详情的编辑按钮会落到首屏外，周期删除确认会生成同名的嵌套无障碍节点。编辑入口移至工具栏，删除确认测试按稳定标识定位，复跑通过。 [首轮日志](https://github.com/loliruru/cost-ios/actions/runs/44994093602)
 - 在 Windows 下载复核了最低支持 iOS 18.0 的未签名 arm64 IPA。主图标指向白龙女孩插画的 AppIcon 资源，包内有编译后的资产目录和图标文件。IPA 共 5,321,095 字节，SHA-256 为 `ee30e9060cfab4536c0d9ad024bdbaf0d142f7968159c7b36609de4dabd93621`，与 CI 一致。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44995838406/artifacts/14744183398)
+
+## 本位币草稿修复
+
+普通记账草稿按本位币保存。旧版草稿在对应本位币首次打开时自动迁移，金额、原币与估值基础都会一并保留。切换本位币后用当前本位币录入，可以切回原本位币继续原草稿。
+
+修复版源码 `d5a4369` 通过 121 项 Swift 测试（含两项草稿回归）、10 项原生 UI 测试、2 项 iOS 18 回退用例、模拟器构建及未签名设备 Archive。Windows 下载复核了 arm64 IPA 0.9.1 / build 13 及其 SHA-256 `1a03c9497081209e2df23608c203b56d334c3a6fa3fbf211fd424bbb31c8a95c`。 [CI](https://github.com/loliruru/cost-ios/actions/runs/45003933408) [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/45003933408/artifacts/14748216911)
 
 ## 真机验收
 

@@ -15,7 +15,7 @@
 | 6 | 统计与异常 | 完成（build 9，自动验证通过，2026-11-21 用户确认通过） |
 | 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
 | 8 | CSV、完整备份与跨平台恢复 | 通过（用户确认，真机 Files 与 Android 应用互导未测试） |
-| 9 | 原生 Glass 与 UI 精修 | 自动验证通过（0.9.0 / build 12），待真机视觉与 VoiceOver 验收 |
+| 9 | 原生 Glass 与 UI 精修 | 自动验证通过（0.9.1 / build 13），待真机复测与视觉、VoiceOver 验收 |
 | 10 | 全量测试与稳定性 | 未开始 |
 
 ## 共用交付门禁
@@ -146,6 +146,8 @@ Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryp
 2026-11-22 用户批准开始。实现和验收步骤见 [Phase 9 记录](PHASE9_NATIVE_APPEARANCE.md)。
 
 2026-11-22 通过模拟器构建、119 项 Swift 测试、iOS 26.2 的 10 项 UI 测试、iOS 18.6 的 2 项回退用例和未签名设备 Archive。Windows 下载复核了 0.9.0 / build 12 的 arm64 IPA、包内 App 图标和 SHA-256。 [CI run 44995838406](https://github.com/loliruru/cost-ios/actions/runs/44995838406) [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/44995838406/artifacts/14744183398)
+
+0.9.1 / build 13 修复本位币切换后恢复到另一币种草稿的问题。121 项 Swift 测试、10 项原生 UI 测试、2 项 iOS 18 回退用例及 Build、Archive 和未签名 IPA 下载校验通过。 [CI run 45003933408](https://github.com/loliruru/cost-ios/actions/runs/45003933408) [修复版 IPA](https://github.com/loliruru/cost-ios/actions/runs/45003933408/artifacts/14748216911)
 
 ## Phase 10 — 完整验证与稳定性
 
