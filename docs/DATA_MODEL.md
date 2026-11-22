@@ -80,7 +80,7 @@ Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环�
 
 GRDB 版本与 Android Room user_version 不共享：iOS v1 注册 v1_schema / v1_seed 两个原子 migration，application_id = 1129272137（COSI）、user_version = 1，历史存 grdb_migrations。未知应用 ID/版本/migration 或外来数据库拒绝打开，不自动擦除。资源 CostSchemaV1.sql 冻结 18 表及索引，62 个 guard 包含 Android 运行时约束、每表 INSERT/UPDATE 类型检查及资金标量校验；SQL NULL 不能绕过验证。GRDB DatabasePool 为私有磁盘库启用 WAL，内存 Queue 用于测试。
 
-Android 恢复要求的 Room identity/运行时约束须在 Phase 8 的兼容导出中生成或映射，不能将 GRDB live DB 原样改名宣称兼容。本阶段完整资金、模板、周期等表和 storage record 已建立，其业务 UseCase 仍在相应后续阶段。
+Phase 8 从审计的 Room DDL 生成 v10 交换库，包含 Room identity、索引和 user_version。iOS 导入把数据重放到冻结的 GRDB schema；iOS 应用内部仍使用独立的 schema 和 migration 历史。
 
 ## 统计与异常数据
 
@@ -90,14 +90,12 @@ Android 恢复要求的 Room identity/运行时约束须在 Phase 8 的兼容导
 
 ## 备份契约（Phase 8）
 
-完整文件头 ASCII `COSTBK01` + 1 mode byte；0 为明文 ZIP，1 为加密 ZIP，之后 salt 16 bytes、nonce 12 bytes。PBKDF2-HMAC-SHA256 / 600000 次 / 256-bit key，AES-GCM / 128-bit tag，header/mode/salt/nonce 作为 AAD；每次生成随机 salt/nonce。新密码 12...1024 字符，跨语言 UTF-8/Unicode 必须由向量锁定。
+完整文件头由 ASCII `COSTBK01` 和一个模式字节组成。模式 0 为明文 ZIP。模式 1 在 ZIP 密文前写入 16 字节 salt 和 12 字节 nonce。密钥使用 PBKDF2-HMAC-SHA256 派生 600000 次，长度为 256 位。AES-GCM 使用 128 位 tag，整个加密头作为 AAD。每次导出生成随机 salt 和 nonce。新密码按 Android 的 12...1024 个 UTF-16 代码单元限制校验，使用原始 UTF-8 序列派生密钥。
 
 ZIP 内 database.sqlite/settings.json/manifest.json/visual_assets/*.webp，manifest 校验 version/schema/size/SHA256。17 张账本表在 TransferDatabase 的依赖顺序导出，restore_state/Room/系统调度内部表不导出为账本。
 
-七项设置白名单来自 BackupPreferences：字符串 `base_currency_code/theme_mode/glass_quality/anomaly_sensitivity`，布尔 `dynamic_color_enabled/reduce_motion_enabled/anomaly_enabled`。保留缺省字段及 Android 枚举值语义，拒绝未知字段/错误类型，JSON 上限 8192 字符。Android 动态颜色选项不转化为虚构的 iOS 动态取色功能；交换层需保留兼容值，iOS 展示设置经明确 mapper 适配。
+七项设置白名单来自 BackupPreferences。字符串为 `base_currency_code/theme_mode/glass_quality/anomaly_sensitivity`，布尔值为 `dynamic_color_enabled/reduce_motion_enabled/anomaly_enabled`。保留缺省字段及 Android 枚举值语义，拒绝未知字段和错误类型，JSON 上限为 8192 字节。iOS 应用本位币、主题和异常选项，并保存其他兼容值供后续导出。
 
 限制：编码和展开总量 256 MiB、DB 128 MiB、每图片 8 MiB、最多 4096 entries；CSV 32 MiB、100000 笔、单元 256 KiB。拒绝未知版本/条目、重名、路径穿越、坏 checksum/引用/SQL/图片。明文 checksum 只能检测损坏，不代表认证。
 
-Android 当前导入 schema 1...10 并在独立库升级；iOS Phase 8 必须验证双向 CSV/完整备份。来源不可信的 triggers/views 不进入 live DB，staging 重放到受信 schema 校验，图片给新私有文件名，事务替换账本与 outbox，提交后启动重放设置。跨进程中断分别验证提交前回滚/提交后设置待处理，不能伪称整个恢复已回滚。
-
-ZIP 和 WebP 编码在仅 GRDB 第三方依赖约束下仍需工程验证；本阶段只冻结契约，不声称已支持跨平台恢复。
+Android 在独立库中升级 schema 1...10。iOS 依据冻结的版本列清单只读源库，并在受信 staging 中应用缺省值、当前约束及领域校验。恢复使用新图片文件名，账本及设置 outbox 在同一事务提交。交付和验证记录见 [Phase 8](PHASE8_PORTABLE_DATA.md)。

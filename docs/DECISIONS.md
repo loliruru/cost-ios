@@ -34,11 +34,11 @@ iOS API Key 由用户在 Settings 输入、存 Keychain。无 key 返回 notConf
 
 Windows 只写源码；macOS GitHub Actions 做工程生成、SPM、模拟器 Build/Test、unsigned device Archive 与 IPA 检查。Phase 1 才创建 workflow、确认远端及运行。SideStore 当前兼容性/签名限制以安装时实际官方说明验证，本阶段不把原计划中的时效信息当成已核验现状。
 
-## ADR-006 — 备份双向兼容与平台限制（待验证）
+## ADR-006 — 备份双向兼容与平台限制
 
-冻结 Android COSTBK01/envelope v1、CSV 编码、17 表、七项设置、图片、AES-GCM/PBKDF2 参数和恢复 outbox 语义。GRDB live DB 不可直接宣称 Android Room 可打开：还涉及 user_version、Room identity、runtime triggers/indices 及 trusted staging 重放。Phase 8 需生成兼容的交换 SQLite 或显式映射，并用双向真实格式 fixture 验证。
+Phase 8 沿用 Android COSTBK01、CSV 编码、17 表、七项设置、图片、AES-GCM/PBKDF2 参数和恢复 outbox。导出依据审计过的 DDL 生成 Room 交换库，包括 v10、identity 和索引。导入时按版本读取行，并以 iOS 当前冻结 schema 校验。设置按白名单落到原子文件，用 SQLite outbox 处理提交后的中断。
 
-仅 GRDB 依赖的约束下，ZIP 容器和 Android WebP 的 iOS 受管图片编码尚无验证结论。不能擅自新增 ZIP/WebP 库、仅改文件扩展名、丢弃图片或将 JSON 当作已有完整备份。Phase 3 处理图片前、Phase 8 编写导出前分别做系统能力与格式实验；若系统 API 不满足要求，完成具体兼容性证据和选项后再请求用户决定。Phase 0 不因此停下其他已授权基础工作。
+ZIP 以存储条目输出，使用系统 Compression 读取 Java 的 raw DEFLATE。WebP 沿用 ADR-011 批准的 libwebp 和系统解码。密码派生和认证加密分别使用 CommonCrypto 和 CryptoKit。格式对照、合成测试和实际验收记录见 [Phase 8](PHASE8_PORTABLE_DATA.md)。
 
 ## ADR-007 — 原生材质与部署版本分离
 

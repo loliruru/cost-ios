@@ -77,6 +77,18 @@ struct PortableDataTests {
         #expect(row.crypto == nil && category.visual.source == .builtIn)
         #expect(try await ledger.records.transaction(id: "current") == nil)
         #expect(await ledger.settings.load().enabled == false)
+
+        let encrypted = try await ledger.transfer.export(.backup, password: password)
+        let second = try await ledger.transfer.export(.backup, password: password)
+        let firstEnvelope = try Data(contentsOf: encrypted)
+        let secondEnvelope = try Data(contentsOf: second)
+        #expect(firstEnvelope.prefix(9) == Data("COSTBK01".utf8) + Data([1]))
+        #expect(firstEnvelope[9..<37] != secondEnvelope[9..<37])
+        let destination = try Ledger(root.appendingPathComponent("destination"))
+        let roundTrip = try await destination.transfer.prepare(encrypted, kind: .backup, password: password)
+        let restored = try await destination.transfer.confirm(roundTrip.token)
+        #expect(restored.imported == 1 && !restored.settingsPending)
+        #expect(try await destination.records.transaction(id: row.id) == row)
     }
 
     @Test func zipRejectsUnsafeNamesAndOversizedEntriesBeforeExtraction() throws {
@@ -179,11 +191,29 @@ struct PortableDataTests {
         let preview = try await target.transfer.prepare(backup, kind: .backup, password: "")
         #expect(preview.transactions == 1_202 && preview.images == 1)
 
+        let existing = try TestLedger.transaction(id: "target-before-restore")
+        _ = try await target.records.createTransaction(existing)
+        try await target.database.writer.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER fixture_failure BEFORE INSERT ON account_transfers
+                BEGIN SELECT RAISE(ABORT, 'fixture restore failure'); END
+                """)
+        }
+        await #expect(throws: (any Error).self) { try await target.transfer.confirm(preview.token) }
+        #expect(try await target.records.transaction(id: existing.id) == existing)
+        #expect(try await target.database.writer.read { try VisualAssetRecord.fetchCount($0) } == 0)
+        let abandonedMedia = try FileManager.default.contentsOfDirectory(at: targetRoot.appendingPathComponent("visual_assets"),
+            includingPropertiesForKeys: nil)
+        #expect(abandonedMedia.isEmpty)
+        try await target.database.writer.write { try $0.execute(sql: "DROP TRIGGER fixture_failure") }
+        let retry = try await target.transfer.prepare(backup, kind: .backup, password: "")
+
         let blocker = targetRoot.appendingPathComponent("portable-settings.json")
         try PortableFiles.directory(blocker)
         try Data([1]).write(to: blocker.appendingPathComponent("blocker"))
-        let outcome = try await target.transfer.confirm(preview.token)
+        let outcome = try await target.transfer.confirm(retry.token)
         #expect(outcome.settingsPending && outcome.imported == 1_202)
+        #expect(try await target.records.transaction(id: existing.id) == nil)
         let row = try await target.database.writer.read { try VisualAssetRecord.fetchOne($0, key: image.id) }
         #expect(row?.relative_path != image.relativePath)
         let sourceImage = try await source.visuals.imageData(id: image.id)

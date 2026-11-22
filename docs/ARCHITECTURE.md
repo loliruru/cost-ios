@@ -31,7 +31,7 @@ Feature View 观察 `@MainActor @Observable` ViewModel 的页面状态并发送�
 
 账单/标签、模板账单/使用统计/撤销、周期 occurrence/transaction/cursor、默认账户切换、分类删除引用复核、转账/损益及恢复均有单一事务边界。资金用同一读取快照派生，不持久化累计余额。
 
-设置使用 typed preferences repository，普通小型非敏感值可落 UserDefaults；核心关系数据在 SQLite。恢复设置 outbox 在暴露业务 Repository/后台协调器前重放。API Key 仅 Keychain，绝不存 UserDefaults/SQLite。备份/恢复与周期执行共享维护互斥；媒体清理与引用变更有独立维护边界。
+核心关系数据保存在 SQLite。参与备份的类型化偏好使用单个原子文件，首次读取时沿用旧 UserDefaults 的本位币和异常偏好。恢复设置 outbox 在暴露业务 Repository 和后台协调器前重放。API Key 仅保存在 Keychain。备份、恢复与周期执行共享维护互斥，媒体清理与引用变更有独立维护边界。
 
 ## 精确数值与统计
 
