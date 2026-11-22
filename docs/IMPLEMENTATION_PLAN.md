@@ -16,7 +16,7 @@
 | 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
 | 8 | CSV、完整备份与跨平台恢复 | 通过（用户确认，真机 Files 与 Android 应用互导未测试） |
 | 9 | 原生 Glass 与 UI 精修 | 完成（0.9.1 / build 13，2026-11-22 用户确认通过） |
-| 10 | 全量测试与稳定性 | 回归用例已补齐，Windows 检查通过，准备验证 1.0.0 / build 14 |
+| 10 | 全量测试与稳定性 | 完成（1.0.0 / build 14，自动验证通过，按用户要求跳过 24 小时真机观察） |
 
 ## 共用交付门禁
 
@@ -162,6 +162,10 @@ Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryp
 
 ### 验证状态
 
-2026-11-22，Windows 通过 Foundation、数据层检查、6 项 IPA 校验器测试和 Git diff 空白检查。额外的 Windows SQLite 检查使用正式 schema 和 1,200 条合成行，核对六页排序及 1,480,800 最小单位的汇总，并核对交换 schema 的 17 张表和 v1–v10 列注册表。
+2026-11-22，Windows 通过 Foundation、数据层检查、6 项 IPA 校验器测试和 Git diff 空白检查。Android 只读审计的 53 份文件摘要、HEAD 和 tracked diff 与基线一致。额外的 Windows SQLite 检查使用正式 schema 和 1,200 条合成行，核对六页排序及 1,480,800 最小单位的汇总，并核对交换 schema 的 17 张表和 v1–v10 列注册表。
 
 Phase 9 基线 CI 耗时约 35 分钟，首轮 Phase 10 工作按 5 分钟上限完成 Windows 检查。用户随后批准执行完整 CI，只跳过 24 小时真机稳定性观察。Phase 10 验证包使用 1.0.0 / build 14。 [Phase 9 基线 CI](https://github.com/loliruru/cost-ios/actions/runs/45003933408)
+
+完整 CI 的首轮在迁移测试中发现一处缺失的 `await`，同时报告了一处多余的 `try`。修复后，源码 `75af65ecaebabd890a5069508695b755564e3889` 使用 Xcode 26.3 / Swift 6.2.4 通过模拟器构建、123 项 Swift 测试、iOS 26.2 的 10 项原生 UI 测试、iOS 18.6 的 2 项回退测试，以及设备 Archive 和 IPA 生成。复跑日志未出现 Swift 或 Clang 编译警告，保留 Xcode 关于 AppIntents 元数据和模拟器目标选择的提示。 [首轮日志](https://github.com/loliruru/cost-ios/actions/runs/45020919080) [通过的 CI](https://github.com/loliruru/cost-ios/actions/runs/45022031308) [构建与测试证据](https://github.com/loliruru/cost-ios/actions/runs/45022031308/artifacts/14755098308)
+
+磁盘 v1 迁移用例耗时 0.068 秒。1,203 笔账单的备份用例耗时 1.893 秒，17 张表的可移植字段、WebP 字节和七项设置全部一致，回滚和周期防重检查通过。Windows 下载并核对了外层 ZIP 与 IPA 的摘要。IPA 为未签名 arm64 iOS 设备包，最低 iOS 18.0，含 AppIcon，共 5,321,977 字节。SHA-256 为 `b0f16d8743fd624d8e714073051beb2dc694988ad5c7d469e40a2c0c0ed6dcae`。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/45022031308/artifacts/14755367697)
