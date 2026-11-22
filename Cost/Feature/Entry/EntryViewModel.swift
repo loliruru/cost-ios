@@ -7,7 +7,7 @@ final class EntryViewModel {
     let existing: LedgerTransaction?
     let services: LedgerServices
     let environment: LedgerEnvironment
-    let key: String
+    private let key: EntryDraftKey
     var isBusy = false
     var error: String?
     var restored = false
@@ -23,7 +23,13 @@ final class EntryViewModel {
          baseCurrency: Currency? = nil,
          existing: LedgerTransaction? = nil, prefilled: EntryDraft? = nil) {
         self.services = services; self.environment = environment; self.existing = existing
-        key = existing?.id ?? prefilled?.sourceTemplateID.map { "template:\($0)" } ?? "new"
+        if let existing {
+            key = .transaction(existing.id)
+        } else if let templateID = prefilled?.sourceTemplateID {
+            key = .template(templateID)
+        } else {
+            key = .manual(baseCurrencyCode: baseCurrency?.code.rawValue ?? EntryDraft.defaultBaseCurrencyCode)
+        }
         draft = EntryDraft(id: existing?.id ?? environment.newID(), requestKey: existing?.requestKey ?? environment.newID(),
             occurredMillis: existing?.occurredAt.epochMillis ?? environment.now(), zoneID: existing?.occurredAt.zoneID ?? environment.zoneID())
         if let baseCurrency {

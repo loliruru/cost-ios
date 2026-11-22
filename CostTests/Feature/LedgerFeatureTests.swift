@@ -3,19 +3,26 @@ import Testing
 @testable import Cost
 
 actor MemoryEntryDraftStore: EntryDraftStore {
-    var values: [String: EntryDraft] = [:]
-    func load(key: String) -> EntryDraft? { values[key] }
-    func save(_ draft: EntryDraft, key: String) { values[key] = draft }
-    func remove(key: String) { values.removeValue(forKey: key) }
+    var values: [EntryDraftKey: EntryDraft] = [:]
+    func load(key: EntryDraftKey) -> EntryDraft? { values[key] }
+    func save(_ draft: EntryDraft, key: EntryDraftKey) { values[key] = draft }
+    func remove(key: EntryDraftKey) { values.removeValue(forKey: key) }
+}
+
+private actor TestBaseCurrencyPreferences: BaseCurrencyPreferences {
+    private var code = "CNY"
+
+    func baseCurrencyCode() -> String { code }
+    func setBaseCurrencyCode(_ code: String) { self.code = code }
 }
 
 @MainActor
 struct LedgerFeatureTests {
-    func fixture() async throws -> LedgerViewModel {
+    func fixture(basePreferences: (any BaseCurrencyPreferences)? = nil) async throws -> LedgerViewModel {
         let repo = GRDBLedgerRepository(database: try AppDatabase.inMemory())
         let services = LedgerServices(currencies: repo, categories: repo, accounts: repo, tags: repo, transactions: repo, funds: repo, drafts: MemoryEntryDraftStore(),
             visuals: ManagedVisualStore(database: repo.database, root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
-            templates: repo)
+            templates: repo, basePreferences: basePreferences)
         let vm = LedgerViewModel(services: services, environment: LedgerEnvironment(now: { 1_800_000_000_000 }, newID: { UUID().uuidString }, zoneID: { "Asia/Singapore" }))
         await vm.reload()
         return vm
@@ -57,6 +64,48 @@ struct LedgerFeatureTests {
         let restored = EntryViewModel(services: vm.services, categories: vm.categories, accounts: vm.accounts, environment: vm.environment)
         await restored.load()
         #expect(restored.draft == entry.draft && restored.restored)
+    }
+
+    @Test func changingBaseCurrencyKeepsUnfinishedAmountsInTheirOwnDrafts() async throws {
+        let vm = try await fixture(basePreferences: TestBaseCurrencyPreferences())
+        let usd = try CurrencyCode("USD")
+        let cny = try CurrencyCode("CNY")
+        try await vm.setBaseCurrency(usd)
+
+        func openEntry(_ ledger: LedgerViewModel) async -> EntryViewModel {
+            let entry = EntryViewModel(services: ledger.services, categories: ledger.categories, accounts: ledger.accounts,
+                                       environment: ledger.environment, baseCurrency: ledger.baseCurrency)
+            await entry.load()
+            return entry
+        }
+
+        let usdEntry = await openEntry(vm)
+        usdEntry.draft.amount = "15"
+        usdEntry.draft.note = "USD 草稿"
+        await usdEntry.persist()
+
+        let reopened = LedgerViewModel(services: vm.services, environment: vm.environment)
+        await reopened.reload()
+        let usdRestored = await openEntry(reopened)
+        #expect(usdRestored.restored && usdRestored.draft == usdEntry.draft)
+        try await reopened.setBaseCurrency(cny)
+        let cnyEntry = await openEntry(reopened)
+        #expect(!cnyEntry.restored && cnyEntry.draft.amount.isEmpty)
+        #expect(cnyEntry.draft.baseCurrencyCode == "CNY" && cnyEntry.draft.currencyCode == "CNY")
+        cnyEntry.draft.amount = "21"
+        #expect(await cnyEntry.save())
+
+        try await reopened.setBaseCurrency(usd)
+        let usdAfterSwitch = await openEntry(reopened)
+        #expect(usdAfterSwitch.restored && usdAfterSwitch.draft == usdEntry.draft)
+        #expect(await usdAfterSwitch.save())
+        let emptyUSDEntry = await openEntry(reopened)
+        #expect(!emptyUSDEntry.restored && emptyUSDEntry.draft.amount.isEmpty)
+        await reopened.reload()
+        #expect(reopened.rows.count == 2)
+        #expect(reopened.rows.allSatisfy { $0.original == $0.convertedBase && $0.exchangeRate.method == .identity })
+        #expect(reopened.rows.first { $0.original.currencyCode == usd }?.original.minorUnits == 1500)
+        #expect(reopened.rows.first { $0.original.currencyCode == cny }?.original.minorUnits == 2100)
     }
     @Test func repeatedSaveIsIdempotentAndTagReusePreservesIdentity() async throws {
         let vm = try await fixture()

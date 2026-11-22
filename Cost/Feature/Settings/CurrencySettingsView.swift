@@ -73,6 +73,8 @@ struct CurrencySettingsView: View {
         .onDisappear { key = "" }
         .confirmationDialog("更改本位币会影响之后新建的账单。", isPresented: $confirmBase, titleVisibility: .visible) {
             if let pendingBase { Button("改为 \(pendingBase.rawValue)") { Task { await model.setBase(pendingBase) } } }
+        } message: {
+            Text("切回原本位币可继续未保存的普通记账草稿。")
         }
         .ledgerError($model.error)
     }

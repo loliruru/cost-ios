@@ -47,7 +47,7 @@ iOS 后台刷新尽力执行，不保证准点；前台启动/恢复时补处理
 
 ## 多币种与估值
 
-Currency 为 seed data；11 个 Fiat 默认启用，USDT/USDC/BTC/ETH metadata 默认停用；完整 scale 见数据模型。本位币默认 CNY，仅接受启用 Fiat。改变本位币需确认，只影响之后新草稿，历史与已打开草稿不重估。不同历史本位币不可直接相加。
+Currency 为 seed data；11 个 Fiat 默认启用，USDT/USDC/BTC/ETH metadata 默认停用；完整 scale 见数据模型。本位币默认 CNY，仅接受启用 Fiat。改变本位币需确认，普通记账按当前本位币恢复草稿，切回原本位币可继续原草稿。历史与草稿各自保留原估值基础。不同历史本位币不可直接相加。
 
 Fiat：实际扣款金额 > 手工率；自动路径当天只直接接受 fresh latest，过去日期要求对应 historical。current/cached fallback 必须明确确认，并冻结不同 valuation method。Twelve Data Forex v2 的 latest freshness 以 provider timestamp + 5 分钟计算，不能被新 fetchedAt 延长；展示来源、数据时间、抓取时间和过期状态，不承诺零延迟。
 
