@@ -25,13 +25,21 @@ final class LedgerUITests: XCTestCase {
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10)); XCTAssertTrue(row.label.contains("12.34"))
         row.tap()
-        app.buttons["ledger.edit"].tap()
+        let edit = app.buttons["ledger.edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 10))
+        edit.tap()
         XCTAssertTrue(amount.waitForExistence(timeout: 10))
         amount.tap(); amount.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "20.01")
         app.buttons["entry.save"].tap()
         let updated = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.' AND label CONTAINS '20.01'")).firstMatch
         XCTAssertTrue(updated.waitForExistence(timeout: 10))
-        updated.tap(); app.buttons["删除账单"].tap(); app.buttons["删除"].tap()
+        updated.tap()
+        let delete = app.buttons["删除账单"]
+        reveal(delete, in: app)
+        delete.tap()
+        let confirm = app.buttons.matching(identifier: "ledger.confirmDelete").firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        confirm.tap()
         XCTAssertTrue(app.buttons["撤销删除"].waitForExistence(timeout: 10))
         app.buttons["撤销删除"].tap()
         XCTAssertTrue(updated.waitForExistence(timeout: 10))
@@ -328,7 +336,7 @@ final class LedgerUITests: XCTestCase {
         for _ in 0..<5 where !delete.isHittable { app.swipeUp() }
         XCTAssertTrue(delete.isHittable)
         delete.tap()
-        let confirm = app.buttons["确认删除"]
+        let confirm = app.buttons.matching(identifier: "recurring.confirmDelete").firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10))
         confirm.tap()
         XCTAssertTrue(app.staticTexts["暂无周期规则"].waitForExistence(timeout: 10))

@@ -283,14 +283,22 @@ struct LedgerDetailView: View {
                         }
                     }
                     else {
-                        Button("编辑账单") { editing = true }.accessibilityIdentifier("ledger.edit")
                         Button("删除账单", role: .destructive) { deleting = true }
                     }
                 }
             }
             .navigationTitle("账单详情")
+            .navigationBarTitleDisplayMode(.inline)
             .costNavigationChrome()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("关闭") { dismiss() } }
+                if checked && !managed && row.deletedAt == nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("编辑账单", systemImage: "pencil") { editing = true }
+                            .accessibilityIdentifier("ledger.edit")
+                    }
+                }
+            }
             .sheet(isPresented: $editing, onDismiss: { dismiss() }) {
                 EntryView(ledger: ledger, existing: row).costEntrySheet()
             }
@@ -303,6 +311,7 @@ struct LedgerDetailView: View {
                         }
                     }
                 }
+                .accessibilityIdentifier("ledger.confirmDelete")
             }
             .disabled(ledger.isBusy)
             .task {
