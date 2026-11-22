@@ -16,7 +16,7 @@ struct LedgerRootView: View {
                 QuickTemplatesView(ledger: model).id(portable?.resetRevision).costTabChrome()
             }
             Tab("统计", systemImage: "chart.bar.xaxis") {
-                StatisticsView(model: statistics).costTabChrome()
+                StatisticsView(model: statistics).id(ObjectIdentifier(statistics)).costTabChrome()
             }
             Tab("设置", systemImage: "gearshape") {
                 LedgerSettingsView(model: model, recurring: recurring, portable: portable).costTabChrome()
