@@ -26,7 +26,7 @@ struct AnomalyPreferences: Equatable, Sendable {
 
 protocol AnomalyPreferencesRepository: Sendable {
     func load() async -> AnomalyPreferences
-    func save(_ preferences: AnomalyPreferences) async
+    func save(_ preferences: AnomalyPreferences) async throws
 }
 
 enum AnomalyWindow: Int64, CaseIterable, Identifiable, Sendable {

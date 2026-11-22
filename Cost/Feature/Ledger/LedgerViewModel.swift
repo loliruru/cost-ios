@@ -164,7 +164,7 @@ final class LedgerViewModel {
     func setBaseCurrency(_ code: CurrencyCode) async throws {
         guard let preferences = services.basePreferences, let currency = try await services.currencies.currency(code: code),
               currency.isEnabled, currency.assetType == .fiat else { throw LedgerError.invalidCurrencyType }
-        await preferences.setBaseCurrencyCode(code.rawValue)
+        try await preferences.setBaseCurrencyCode(code.rawValue)
         generation += 1
         baseCurrency = currency
         await reload()

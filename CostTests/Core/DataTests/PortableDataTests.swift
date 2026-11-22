@@ -54,6 +54,13 @@ struct PortableDataTests {
         await #expect(throws: PortableDataError.authenticationFailed) {
             try await ledger.transfer.prepare(file, kind: .backup, password: "Café-账本🔐-portable")
         }
+        var corrupted = fixture.backup
+        corrupted[corrupted.count - 1] ^= 1
+        let damagedFile = root.appendingPathComponent("damaged.costbackup")
+        try corrupted.write(to: damagedFile)
+        await #expect(throws: PortableDataError.authenticationFailed) {
+            try await ledger.transfer.prepare(damagedFile, kind: .backup, password: password)
+        }
         #expect(try await ledger.records.transaction(id: "current") == existing)
         let preview = try await ledger.transfer.prepare(file, kind: .backup, password: password)
         #expect(preview.transactions == 1 && preview.images == 0)
@@ -70,6 +77,33 @@ struct PortableDataTests {
         #expect(row.crypto == nil && category.visual.source == .builtIn)
         #expect(try await ledger.records.transaction(id: "current") == nil)
         #expect(await ledger.settings.load().enabled == false)
+    }
+
+    @Test func zipRejectsUnsafeNamesAndOversizedEntriesBeforeExtraction() throws {
+        let root = try temporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let name = "settings.json"
+        try Data("{}".utf8).write(to: root.appendingPathComponent(name))
+        let archive = root.appendingPathComponent("test.zip")
+        try PortableZIP.write(archive, root: root, names: [name])
+        let original = try Data(contentsOf: archive)
+        var unsafe = original
+        let valid = Data(name.utf8)
+        let invalid = Data("../escape.txt".utf8)
+        let local = try #require(unsafe.range(of: valid))
+        unsafe.replaceSubrange(local, with: invalid)
+        let central = try #require(unsafe.range(of: valid))
+        unsafe.replaceSubrange(central, with: invalid)
+        try unsafe.write(to: archive)
+        let output = root.appendingPathComponent("extracted")
+        #expect(throws: PortableDataError.invalidFormat) { try PortableZIP.extract(archive, to: output) }
+        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("escape.txt").path))
+        var oversized = original
+        // Single-entry writer's central entry begins immediately after its local header, name and data.
+        let centralOffset = 30 + name.utf8.count + 2
+        oversized.replaceSubrange((centralOffset + 24)..<(centralOffset + 28), with: [1, 32, 0, 0])
+        try oversized.write(to: archive)
+        #expect(throws: PortableDataError.tooLarge) { try PortableZIP.extract(archive, to: output) }
     }
 
     @Test func csvKeepsExactTextAndRejectsAConflictingBatch() async throws {
@@ -120,18 +154,36 @@ struct PortableDataTests {
         account.visual = LedgerVisual(iconKey: "wallet", source: .image, iconAssetID: image.id)
         account.updatedAt = 100
         try await source.records.saveAccount(account)
+        try await source.records.saveAccount(Account(id: "invest", name: "合成投资账户", createdAt: 10, updatedAt: 10))
+        _ = try await source.records.saveOpening(AccountFundOpening(id: "opening-invest", accountID: "invest",
+            kind: .investmentCost, enabled: true, currencyCode: CurrencyCode("CNY"), scale: 2,
+            amountMinor: 200_000, startedAt: 1000, createdAt: 1000))
+        let transfer = try await source.records.saveTransfer(
+            AccountFundsRepositoryTests().transfer(profit: 10_000, withdrawal: true), expectedUpdatedAt: nil)
+        let content = try RecurringContent(name: "合成规则", type: .expense,
+            amount: Money(minorUnits: 500, currencyCode: CurrencyCode("CNY"), scale: 2), categoryID: "seed-expense-other",
+            accountID: "seed-default-account", note: nil, tagIDs: [],
+            schedule: RecurringSchedule(startDay: 1, endDay: 1, minutes: 0, zoneID: "UTC"), catchUp: .createMissed)
+        try await source.records.saveRecurringRule(id: "sample-rule", content: content, expectedVersion: nil, at: 1000)
+        func process(_ ledger: Ledger) async throws {
+            let processor = ProcessRecurringRules(rules: ledger.records, currencies: ledger.records,
+                provider: UnconfiguredRecurringFiatProvider(), environment: LedgerEnvironment(now: { 2 * 86_400_000 }))
+            var blocked: Set<String> = []
+            _ = try await processor.runDue(excluding: &blocked)
+        }
+        try await process(source)
         try await source.database.writer.write { db in
             for index in 0..<1_200 { try TransactionRecord(TestLedger.transaction(id: "bulk-\(index)")).insert(db) }
         }
         let backup = try await source.transfer.export(.backup, password: "")
         let preview = try await target.transfer.prepare(backup, kind: .backup, password: "")
-        #expect(preview.transactions == 1_200 && preview.images == 1)
+        #expect(preview.transactions == 1_202 && preview.images == 1)
 
         let blocker = targetRoot.appendingPathComponent("portable-settings.json")
         try PortableFiles.directory(blocker)
         try Data([1]).write(to: blocker.appendingPathComponent("blocker"))
         let outcome = try await target.transfer.confirm(preview.token)
-        #expect(outcome.settingsPending && outcome.imported == 1_200)
+        #expect(outcome.settingsPending && outcome.imported == 1_202)
         let row = try await target.database.writer.read { try VisualAssetRecord.fetchOne($0, key: image.id) }
         #expect(row?.relative_path != image.relativePath)
         let sourceImage = try await source.visuals.imageData(id: image.id)
@@ -145,5 +197,11 @@ struct PortableDataTests {
         #expect(preferences.theme_mode == "DARK" && preferences.glass_quality == "MEDIUM")
         #expect(preferences.dynamic_color_enabled == false && preferences.reduce_motion_enabled == true)
         #expect(preferences.anomaly_enabled == false && preferences.anomaly_sensitivity == "HIGH")
+        #expect(try await target.records.transfer(id: transfer.id) == transfer)
+        let profit = try #require(transfer.profitTransactionID)
+        #expect(try await target.records.isManagedTransaction(id: profit))
+        try await process(target)
+        #expect(try await target.database.writer.read { try TransactionRecord.fetchCount($0) } == 1_202)
+        #expect(try await target.database.writer.read { try RecurringExecutionRecord.fetchCount($0) } == 1)
     }
 }

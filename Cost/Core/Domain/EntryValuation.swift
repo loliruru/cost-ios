@@ -2,7 +2,7 @@ import Foundation
 
 protocol BaseCurrencyPreferences: Sendable {
     func baseCurrencyCode() async -> String
-    func setBaseCurrencyCode(_ code: String) async
+    func setBaseCurrencyCode(_ code: String) async throws
 }
 
 func preferredBaseCurrency(_ preferences: (any BaseCurrencyPreferences)?, in repository: any CurrencyRepository) async throws -> Currency {

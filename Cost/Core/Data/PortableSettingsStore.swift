@@ -74,10 +74,10 @@ actor PortableSettingsStore: BaseCurrencyPreferences, AnomalyPreferencesReposito
 
     func baseCurrencyCode() -> String { settings.base_currency_code ?? EntryDraft.defaultBaseCurrencyCode }
 
-    func setBaseCurrencyCode(_ code: String) {
+    func setBaseCurrencyCode(_ code: String) throws {
         var updated = settings
         updated.base_currency_code = code
-        try? replace(updated)
+        try replace(updated)
     }
 
     func load() -> AnomalyPreferences {
@@ -85,10 +85,10 @@ actor PortableSettingsStore: BaseCurrencyPreferences, AnomalyPreferencesReposito
             sensitivity: settings.anomaly_sensitivity.flatMap(AnomalySensitivity.init(rawValue:)) ?? .normal)
     }
 
-    func save(_ preferences: AnomalyPreferences) {
+    func save(_ preferences: AnomalyPreferences) throws {
         var updated = settings
         updated.anomaly_enabled = preferences.enabled
         updated.anomaly_sensitivity = preferences.sensitivity.rawValue
-        try? replace(updated)
+        try replace(updated)
     }
 }

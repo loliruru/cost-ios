@@ -35,10 +35,10 @@ enum PortableZIP {
             let entry = Entry(name: Data(name.utf8), flags: 0x800, method: 0, crc: crc.value,
                 compressed: size, expanded: size, offset: offset)
             var header = Data()
-            header.zip32(0x04034b50)
+            header.appendZIP32(0x04034b50)
             appendFileFields(entry, to: &header)
-            header.zip16(entry.name.count)
-            header.zip16(0)
+            header.appendZIP16(entry.name.count)
+            header.appendZIP16(0)
             header.append(entry.name)
             try output.write(contentsOf: header)
             try PortableFiles.chunks(source, limit: size) { try output.write(contentsOf: $0) }
@@ -47,37 +47,37 @@ enum PortableZIP {
         let centralOffset = Int(try output.offset())
         var central = Data()
         for entry in entries {
-            central.zip32(0x02014b50)
-            central.zip16(20)
+            central.appendZIP32(0x02014b50)
+            central.appendZIP16(20)
             appendFileFields(entry, to: &central)
-            central.zip16(entry.name.count)
-            for _ in 0..<4 { central.zip16(0) }
-            central.zip32(0)
-            central.zip32(UInt32(entry.offset))
+            central.appendZIP16(entry.name.count)
+            for _ in 0..<4 { central.appendZIP16(0) }
+            central.appendZIP32(0)
+            central.appendZIP32(UInt32(entry.offset))
             central.append(entry.name)
         }
         let centralSize = central.count
-        central.zip32(0x06054b50)
-        central.zip32(0)
-        central.zip16(entries.count)
-        central.zip16(entries.count)
-        central.zip32(UInt32(centralSize))
-        central.zip32(UInt32(centralOffset))
-        central.zip16(0)
+        central.appendZIP32(0x06054b50)
+        central.appendZIP32(0)
+        central.appendZIP16(entries.count)
+        central.appendZIP16(entries.count)
+        central.appendZIP32(UInt32(centralSize))
+        central.appendZIP32(UInt32(centralOffset))
+        central.appendZIP16(0)
         guard centralOffset + central.count <= PortableLimits.archive else { throw PortableDataError.tooLarge }
         try output.write(contentsOf: central)
         try output.synchronize()
     }
 
     private static func appendFileFields(_ entry: Entry, to header: inout Data) {
-        header.zip16(20)
-        header.zip16(entry.flags)
-        header.zip16(entry.method)
-        header.zip16(0)
-        header.zip16(0x21) // 1980-01-01
-        header.zip32(entry.crc)
-        header.zip32(UInt32(entry.compressed))
-        header.zip32(UInt32(entry.expanded))
+        header.appendZIP16(20)
+        header.appendZIP16(entry.flags)
+        header.appendZIP16(entry.method)
+        header.appendZIP16(0)
+        header.appendZIP16(0x21) // 1980-01-01
+        header.appendZIP32(entry.crc)
+        header.appendZIP32(UInt32(entry.compressed))
+        header.appendZIP32(UInt32(entry.expanded))
     }
 
     static func extract(_ archive: URL, to root: URL) throws -> Set<String> {
@@ -199,7 +199,7 @@ enum PortableZIP {
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: capacity)
         defer { buffer.deallocate() }
         var stream = compression_stream(dst_ptr: buffer, dst_size: capacity, src_ptr: UnsafePointer(buffer),
-            src_size: 0, state: UnsafeMutableRawPointer(buffer))
+            src_size: 0, state: nil)
         guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
             throw PortableDataError.invalidFormat
         }
@@ -255,13 +255,13 @@ extension Data {
         UInt32(zip16(offset)) | (UInt32(zip16(offset + 2)) << 16)
     }
 
-    fileprivate mutating func zip16(_ value: Int) {
+    fileprivate mutating func appendZIP16(_ value: Int) {
         append(UInt8(truncatingIfNeeded: value))
         append(UInt8(truncatingIfNeeded: value >> 8))
     }
 
-    fileprivate mutating func zip32(_ value: UInt32) {
-        zip16(Int(value & 0xffff))
-        zip16(Int(value >> 16))
+    fileprivate mutating func appendZIP32(_ value: UInt32) {
+        appendZIP16(Int(value & 0xffff))
+        appendZIP16(Int(value >> 16))
     }
 }

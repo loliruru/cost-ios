@@ -204,11 +204,15 @@ final class StatisticsViewModel {
 
     func setPreferences(_ preferences: AnomalyPreferences) {
         guard !isSavingPreferences else { return }
-        self.preferences = preferences
         isSavingPreferences = true
         Task {
-            await preferenceStore.save(preferences)
-            isSavingPreferences = false
+            defer { isSavingPreferences = false }
+            do {
+                try await preferenceStore.save(preferences)
+                self.preferences = preferences
+            } catch {
+                feedbackError = "无法保存异常设置，请重试。"
+            }
         }
     }
 
