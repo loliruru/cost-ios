@@ -80,6 +80,49 @@ final class LedgerUITests: XCTestCase {
     }
 
     @MainActor
+    func testResetCancelsSafelyAndClearsLedgerAndDefaultMetadataAfterConfirmation() {
+        let app = launch()
+        app.buttons["ledger.add"].tap()
+        let amount = app.textFields["entry.amount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 10))
+        amount.tap()
+        amount.typeText("18.25")
+        app.buttons["entry.save"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.' AND label CONTAINS '18.25'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+
+        app.tabBars.buttons["设置"].tap()
+        let reset = app.buttons["settings.resetData"]
+        reveal(reset, in: app)
+        reset.tap()
+        let confirmation = app.alerts["清空所有数据？"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+        confirmation.buttons["取消"].tap()
+        app.tabBars.buttons["账单"].tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+
+        app.tabBars.buttons["设置"].tap()
+        reveal(reset, in: app)
+        reset.tap()
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+        confirmation.buttons["确认清空"].tap()
+        XCTAssertTrue(app.staticTexts["settings.resetComplete"].waitForExistence(timeout: 10))
+
+        app.tabBars.buttons["账单"].tap()
+        XCTAssertTrue(app.staticTexts["暂无账单"].waitForExistence(timeout: 10))
+        XCTAssertFalse(row.exists)
+        app.tabBars.buttons["设置"].tap()
+        app.swipeDown()
+        app.buttons["分类"].tap()
+        XCTAssertTrue(app.staticTexts["暂无分类"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars.buttons["新增分类"].exists)
+        app.navigationBars.buttons["设置"].tap()
+        app.buttons["账户"].tap()
+        XCTAssertTrue(app.staticTexts["暂无账户"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars.buttons["新增账户"].exists)
+    }
+
+    @MainActor
     func testForeignEntryWithActualSettlementAndKeySetting() {
         let app = launch()
         app.tabBars.buttons["设置"].tap()

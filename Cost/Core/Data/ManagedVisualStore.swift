@@ -151,6 +151,13 @@ actor ManagedVisualStore: ManagedVisualRepository {
         await acquire(); defer { unlock() }
         leases.removeValue(forKey: owner)
     }
+
+    /// The caller holds visual maintenance after removing the ledger's image references.
+    func removeFilesAfterReset() throws {
+        try PortableFiles.removeIfPresent(root.appendingPathComponent("visual_assets", isDirectory: true))
+        leases.removeAll()
+    }
+
     func cleanup() async throws {
         await acquire(); defer { unlock() }
         let protected = leases.values.reduce(into: Set<String>()) { $0.formUnion($1) }

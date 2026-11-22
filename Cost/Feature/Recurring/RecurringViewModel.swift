@@ -143,6 +143,12 @@ final class RecurringViewModel {
         await refreshSchedules()
     }
 
+    func refreshAfterReset() async {
+        remindersEnabled = system.remindersEnabled
+        error = nil
+        await refreshAfterRestore()
+    }
+
     func rearmBackgroundRefresh() {
         system.scheduleRefresh(earliest: manage.environment.now())
     }

@@ -20,7 +20,8 @@ struct PortableDataTests {
         let transfer: LocalPortableDataRepository
         var records: GRDBLedgerRepository { GRDBLedgerRepository(database: database) }
 
-        init(_ root: URL, database: AppDatabase? = nil) throws {
+        init(_ root: URL, database: AppDatabase? = nil,
+             clearPrivateState: @escaping @Sendable () async throws -> Void = {}) throws {
             let database = try database ?? AppDatabase.inMemory()
             let visuals = ManagedVisualStore(database: database, root: root)
             let settings = try PortableSettingsStore(root: root, suiteName: UUID().uuidString)
@@ -28,7 +29,16 @@ struct PortableDataTests {
             self.visuals = visuals
             self.settings = settings
             transfer = LocalPortableDataRepository(database: database, visuals: visuals, settings: settings,
-                maintenance: LedgerMaintenance(), root: root.appendingPathComponent("stage"))
+                maintenance: LedgerMaintenance(), root: root.appendingPathComponent("stage"), clearPrivateState: clearPrivateState)
+        }
+    }
+
+    private actor PrivateResetFixture {
+        private(set) var attempts = 0
+
+        func clear() throws {
+            attempts += 1
+            if attempts == 1 { throw PortableDataError.storage }
         }
     }
 
@@ -263,7 +273,7 @@ struct PortableDataTests {
         #expect(try await ledger.visuals.imageData(id: image.id) == imageBytes)
         #expect(try await ledger.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } != nil)
         try FileManager.default.removeItem(at: blocker)
-        try await ledger.transfer.finishPendingSettings()
+        try await ledger.transfer.finishPendingMaintenance()
         #expect(try await ledger.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } == nil)
         let restoredPreferences = try PortableSettingsStore(root: root)
         let restoredSettings = try await restoredPreferences.snapshot().encoded()
@@ -276,6 +286,82 @@ struct PortableDataTests {
         try await process()
         #expect(try await ledger.database.writer.read { try TransactionRecord.fetchCount($0) } == 1_203)
         #expect(try await ledger.database.writer.read { try RecurringExecutionRecord.fetchCount($0) } == 1)
+    }
+
+    @Test func resetRollsBackBeforeCommitAndResumesAfterReopeningWithoutSeedingCategoriesOrAccounts() async throws {
+        let root = try temporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("ledger.sqlite")
+        let database = try await AppDatabase.open(at: url)
+        let localState = PrivateResetFixture()
+        let ledger = try Ledger(root, database: database, clearPrivateState: { try await localState.clear() })
+        let preferences = PortableSettings(base_currency_code: "USD", theme_mode: "DARK")
+        try await ledger.settings.replace(preferences)
+        let btc = try CurrencyCode("BTC")
+        var enabledCrypto = try #require(try await ledger.records.currency(code: btc))
+        enabledCrypto.isEnabled = true
+        try await ledger.records.saveCurrency(enabledCrypto)
+        let row = try TestLedger.transaction(id: "active")
+        _ = try await ledger.records.createTransaction(row)
+        _ = try await ledger.records.createTransaction(TestLedger.transaction(id: "deleted", updated: 20, deleted: 20))
+        let png = root.appendingPathComponent("fixture.png")
+        try ManagedVisualTests().source().write(to: png)
+        let image = try await ledger.visuals.importImage(file: png, kind: .icon, owner: "fixture")
+        var account = try #require(try await ledger.records.account(id: "seed-default-account"))
+        account.visual = LedgerVisual(iconKey: "wallet", source: .image, iconAssetID: image.id)
+        try await ledger.records.saveAccount(account)
+        let exported = try await ledger.transfer.export(.csv, password: "")
+        let preview = try await ledger.transfer.prepare(exported, kind: .csv, password: "")
+
+        try await database.writer.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER fail_reset BEFORE DELETE ON accounts
+                BEGIN SELECT RAISE(ABORT, 'fixture reset failure'); END
+                """)
+        }
+        await #expect(throws: (any Error).self) { try await ledger.transfer.resetLocalData() }
+        #expect(await localState.attempts == 0)
+        #expect(try await ledger.records.transaction(id: row.id) == row)
+        #expect(try await ledger.visuals.imageData(id: image.id) != nil)
+        #expect(FileManager.default.fileExists(atPath: exported.path))
+        try await database.writer.write { try $0.execute(sql: "DROP TRIGGER fail_reset") }
+
+        let outcome = try await ledger.transfer.resetLocalData()
+        guard case .cleanupPending = outcome else {
+            Issue.record("The fixture must interrupt private cleanup after commit")
+            return
+        }
+        #expect(try await ledger.records.transaction(id: row.id) == nil)
+        #expect(try await database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } != nil)
+        await #expect(throws: PortableDataError.expiredPreview) { try await ledger.transfer.confirm(preview.token) }
+        try database.writer.close()
+
+        let reopened = try await AppDatabase.open(at: url)
+        defer { try? reopened.writer.close() }
+        let afterRestart = try Ledger(root, database: reopened, clearPrivateState: { try await localState.clear() })
+        try await afterRestart.transfer.finishPendingMaintenance()
+        try await afterRestart.transfer.finishPendingMaintenance()
+        #expect(await localState.attempts == 2)
+        #expect(await afterRestart.settings.baseCurrencyCode() == "CNY")
+        #expect(await afterRestart.settings.snapshot().theme_mode == nil)
+        #expect(!FileManager.default.fileExists(atPath: exported.path))
+        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(image.relativePath).path))
+        #expect(FileManager.default.fileExists(atPath: png.path))
+        #expect(try await afterRestart.records.currencies(includeDisabled: true).count == 15)
+        #expect(try await afterRestart.records.currency(code: btc)?.isEnabled == false)
+        try await reopened.writer.read { (db: Database) throws -> Void in
+            for table in PortableLedger.tables where table != "currencies" {
+                #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(PortableLedger.quote(table))") == 0)
+            }
+            #expect(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
+            #expect(try RestoreStateRecord.fetchOne(db, key: 1) == nil)
+        }
+        try await afterRestart.records.saveCategory(Category(id: "new-category", name: "新分类", type: .expense,
+            createdAt: 30, updatedAt: 30))
+        try await afterRestart.records.saveAccount(Account(id: "new-account", name: "新账户", createdAt: 30, updatedAt: 30))
+        let newRow = try TestLedger.transaction(id: "new-entry", category: "new-category", account: "new-account",
+            created: 31, updated: 31)
+        #expect(try await afterRestart.records.createTransaction(newRow) == newRow)
     }
 
     private func verifyLargeLedgerQueries(_ ledger: Ledger, expectedIDs: [String], currency: CurrencyCode) async throws {

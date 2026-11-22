@@ -21,6 +21,16 @@ final class RecurringSystem {
 
     var remindersEnabled: Bool { !isUITesting && defaults.bool(forKey: Self.reminderPreference) }
 
+    func resetLocalData() async {
+        guard !isUITesting else { return }
+        defaults.removeObject(forKey: Self.reminderPreference)
+        reminderUpdate?.cancel()
+        _ = await reminderUpdate?.result
+        scheduleRefresh(earliest: nil)
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+    }
+
     func enableReminders(_ enabled: Bool) async throws -> Bool {
         guard !isUITesting else { return false }
         let allowed = enabled ? try await requestNotificationAuthorization() : false

@@ -17,6 +17,10 @@ struct DatabaseSeed: Decodable, Sendable {
     let categories: [CategoryRecord]
     let accounts: [AccountRecord]
 
+    static func loadV1() throws -> Self {
+        try JSONDecoder().decode(Self.self, from: DatabaseResources.data("CostSeedV1", extension: "json"))
+    }
+
     func install(in db: Database) throws {
         for record in currencies { try record.insert(db, onConflict: .ignore) }
         for record in categories { try record.insert(db, onConflict: .ignore) }
@@ -70,7 +74,7 @@ final class AppDatabase: Sendable {
     static func makeMigrator() throws -> DatabaseMigrator {
         let sqlData = try DatabaseResources.data("CostSchemaV1", extension: "sql")
         guard let sql = String(data: sqlData, encoding: .utf8) else { throw LedgerError.missingResource }
-        let seed = try JSONDecoder().decode(DatabaseSeed.self, from: DatabaseResources.data("CostSeedV1", extension: "json"))
+        let seed = try DatabaseSeed.loadV1()
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1_schema") { db in try db.execute(sql: sql) }
         migrator.registerMigration("v1_seed") { db in try seed.install(in: db) }

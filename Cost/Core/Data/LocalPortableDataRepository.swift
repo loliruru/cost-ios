@@ -2,6 +2,9 @@ import Foundation
 import GRDB
 
 actor LocalPortableDataRepository: PortableDataRepository {
+    // Backup settings are JSON objects. This private marker cannot come from an import.
+    private static let resetMarker = "reset-local-data-v1"
+
     private struct Stage: Sendable {
         let directory: URL
         let preview: PortableDataPreview
@@ -15,16 +18,20 @@ actor LocalPortableDataRepository: PortableDataRepository {
     private let settings: PortableSettingsStore
     private let maintenance: LedgerMaintenance
     private let root: URL
+    private let clearPrivateState: @Sendable () async throws -> Void
     private var pending: [UUID: Stage] = [:]
     private var exports: Set<URL> = []
+    private var resetInProgress = false
+    private var transfersInProgress = 0
 
     init(database: AppDatabase, visuals: ManagedVisualStore, settings: PortableSettingsStore,
-         maintenance: LedgerMaintenance, root: URL) {
+         maintenance: LedgerMaintenance, root: URL, clearPrivateState: @escaping @Sendable () async throws -> Void = {}) {
         self.database = database
         self.visuals = visuals
         self.settings = settings
         self.maintenance = maintenance
         self.root = root
+        self.clearPrivateState = clearPrivateState
     }
 
     func clearAbandonedStages() throws {
@@ -36,16 +43,68 @@ actor LocalPortableDataRepository: PortableDataRepository {
     }
 
     /// Call at startup, or while holding ledger maintenance.
-    func finishPendingSettings() async throws {
-        let pending = try await database.writer.read { db in try RestoreStateRecord.fetchOne(db, key: 1)?.settings }
-        guard let pending else { return }
-        try await settings.replace(PortableSettings.decode(Data(pending.utf8)))
+    func finishPendingMaintenance() async throws {
+        guard let operation = try await pendingMaintenance() else { return }
+        if operation == Self.resetMarker {
+            try await visuals.withMaintenance { try await self.finishReset() }
+        } else {
+            try await settings.replace(PortableSettings.decode(Data(operation.utf8)))
+            try await clearMaintenance(operation)
+        }
+    }
+
+    func resetLocalData() async throws -> LocalDataResetOutcome {
+        guard !resetInProgress, transfersInProgress == 0 else { throw PortableDataError.storage }
+        resetInProgress = true
+        defer { resetInProgress = false }
+        return try await maintenance.withAccess {
+            try await self.visuals.withMaintenance { try await self.resetUnderMaintenance() }
+        }
+    }
+
+    private func resetUnderMaintenance() async throws -> LocalDataResetOutcome {
+        if try await pendingMaintenance() != Self.resetMarker {
+            let currencies = try DatabaseSeed.loadV1().currencies
+            try await database.writer.write { db in
+                try PortableLedger.clear(db)
+                for currency in currencies { try currency.insert(db) }
+                try PortableLedger.checkReferences(db)
+                try db.execute(sql: "INSERT OR REPLACE INTO restore_state(id, settings) VALUES (1, ?)",
+                    arguments: [Self.resetMarker])
+            }
+        }
+        do {
+            try await finishReset()
+            return .complete
+        } catch {
+            return .cleanupPending
+        }
+    }
+
+    private func finishReset() async throws {
+        pending.removeAll()
+        exports.removeAll()
+        try await clearPrivateState()
+        try await settings.reset()
+        try await visuals.removeFilesAfterReset()
+        try PortableFiles.removeIfPresent(root)
+        try await clearMaintenance(Self.resetMarker)
+    }
+
+    private func pendingMaintenance() async throws -> String? {
+        try await database.writer.read { db in try RestoreStateRecord.fetchOne(db, key: 1)?.settings }
+    }
+
+    private func clearMaintenance(_ operation: String) async throws {
         try await database.writer.write { db in
-            try db.execute(sql: "DELETE FROM restore_state WHERE id = 1 AND settings = ?", arguments: [pending])
+            try db.execute(sql: "DELETE FROM restore_state WHERE id = 1 AND settings = ?", arguments: [operation])
         }
     }
 
     func export(_ kind: PortableDataKind, password: String) async throws -> URL {
+        guard !resetInProgress else { throw PortableDataError.storage }
+        transfersInProgress += 1
+        defer { transfersInProgress -= 1 }
         let directory = try newDirectory()
         let file = directory.appendingPathComponent(kind.fileName)
         do {
@@ -54,7 +113,7 @@ actor LocalPortableDataRepository: PortableDataRepository {
                 try await database.writer.read { db in try PortableCSV.write(file, in: db, columns: columns) }
             } else {
                 try await maintenance.withAccess {
-                    try await self.finishPendingSettings()
+                    try await self.finishPendingMaintenance()
                     try await self.visuals.withMaintenance {
                         try await self.writeBackup(file, directory: directory, password: password)
                     }
@@ -85,6 +144,7 @@ actor LocalPortableDataRepository: PortableDataRepository {
     }
 
     func prepare(_ source: URL, kind: PortableDataKind, password: String) throws -> PortableDataPreview {
+        guard !resetInProgress else { throw PortableDataError.storage }
         let token = UUID()
         let directory = try newDirectory(id: token)
         do {
@@ -129,12 +189,15 @@ actor LocalPortableDataRepository: PortableDataRepository {
     }
 
     func confirm(_ token: UUID) async throws -> PortableDataOutcome {
+        guard !resetInProgress else { throw PortableDataError.storage }
         guard let stage = pending.removeValue(forKey: token) else { throw PortableDataError.expiredPreview }
+        transfersInProgress += 1
+        defer { transfersInProgress -= 1 }
         defer { try? FileManager.default.removeItem(at: stage.directory) }
         let source = try DatabaseQueue(path: stage.databaseURL.path, configuration: AppDatabase.configuration())
         if let preferences = stage.settings {
             return try await maintenance.withAccess {
-                try await self.finishPendingSettings()
+                try await self.finishPendingMaintenance()
                 return try await self.visuals.withMaintenance {
                     try await Task.detached {
                         try await self.restore(stage, from: source, settings: preferences)
@@ -183,7 +246,7 @@ actor LocalPortableDataRepository: PortableDataRepository {
         }
         committed = true
         var pending = false
-        do { try await finishPendingSettings() }
+        do { try await finishPendingMaintenance() }
         catch { pending = true }
         return PortableDataOutcome(imported: stage.preview.transactions, skipped: 0, settingsPending: pending)
     }

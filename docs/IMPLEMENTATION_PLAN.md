@@ -169,3 +169,9 @@ Phase 9 基线 CI 耗时约 35 分钟，首轮 Phase 10 工作按 5 分钟上限
 完整 CI 的首轮在迁移测试中发现一处缺失的 `await`，同时报告了一处多余的 `try`。修复后，源码 `75af65ecaebabd890a5069508695b755564e3889` 使用 Xcode 26.3 / Swift 6.2.4 通过模拟器构建、123 项 Swift 测试、iOS 26.2 的 10 项原生 UI 测试、iOS 18.6 的 2 项回退测试，以及设备 Archive 和 IPA 生成。复跑日志未出现 Swift 或 Clang 编译警告，保留 Xcode 关于 AppIntents 元数据和模拟器目标选择的提示。 [首轮日志](https://github.com/loliruru/cost-ios/actions/runs/45020919080) [通过的 CI](https://github.com/loliruru/cost-ios/actions/runs/45022031308) [构建与测试证据](https://github.com/loliruru/cost-ios/actions/runs/45022031308/artifacts/14755098308)
 
 磁盘 v1 迁移用例耗时 0.068 秒。1,203 笔账单的备份用例耗时 1.893 秒，17 张表的可移植字段、WebP 字节和七项设置全部一致，回滚和周期防重检查通过。Windows 下载并核对了外层 ZIP 与 IPA 的摘要。IPA 为未签名 arm64 iOS 设备包，最低 iOS 18.0，含 AppIcon，共 5,321,977 字节。SHA-256 为 `b0f16d8743fd624d8e714073051beb2dc694988ad5c7d469e40a2c0c0ed6dcae`。 [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/45022031308/artifacts/14755367697)
+
+### 1.0.1 本机清空
+
+「设置 → 清空所有数据」经确认后删除全部账单和关联资料，包括默认分类和账户。内置币种恢复初始值。Cost 清除本机图片、临时导出文件、草稿、偏好、行情密钥和定时提醒。保存到「文件」里的备份可用于重新导入。清空后先新增分类和账户即可记账。
+
+账本清空和清理标记在同一个 SQLite 事务提交。清理中断可从设置页继续，重开应用也会重试。构建号 15。回归用例覆盖确认前取消、删除事务回滚、重开后继续清理，以及重开后分类和账户仍为空。待 Xcode 和模拟器验证。

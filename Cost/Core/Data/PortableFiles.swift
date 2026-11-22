@@ -35,6 +35,11 @@ enum PortableLimits {
 enum PortableFiles {
     static let chunkSize = 64 * 1024
 
+    static func removeIfPresent(_ url: URL) throws {
+        do { try FileManager.default.removeItem(at: url) }
+        catch let error as CocoaError where error.code == .fileNoSuchFile {}
+    }
+
     static func directory(_ url: URL) throws {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
             attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])

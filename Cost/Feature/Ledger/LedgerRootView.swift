@@ -5,19 +5,39 @@ struct LedgerRootView: View {
     let recurring: RecurringViewModel
     let statistics: StatisticsViewModel
     var portable: PortableDataViewModel?
+    private var clearingData: Bool { portable?.resetting == true || portable?.resetPending == true }
+
     var body: some View {
         TabView {
             Tab("账单", systemImage: "list.bullet.rectangle") {
                 LedgerListView(model: model).costTabChrome()
             }
             Tab("模板", systemImage: "square.on.square") {
-                QuickTemplatesView(ledger: model).costTabChrome()
+                QuickTemplatesView(ledger: model).id(portable?.resetRevision).costTabChrome()
             }
             Tab("统计", systemImage: "chart.bar.xaxis") {
                 StatisticsView(model: statistics).costTabChrome()
             }
             Tab("设置", systemImage: "gearshape") {
                 LedgerSettingsView(model: model, recurring: recurring, portable: portable).costTabChrome()
+            }
+        }
+        .disabled(clearingData)
+        .accessibilityHidden(clearingData)
+        .overlay {
+            if let portable, clearingData {
+                VStack(spacing: 16) {
+                    if portable.resetting {
+                        ProgressView("正在清空本机数据…")
+                    } else {
+                        Text("账本已清空，仍有本机资料待清理。")
+                        Button("继续清理") { Task { await portable.resetLocalData() } }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background { Rectangle().fill(.background).ignoresSafeArea() }
             }
         }
         .task { await model.reload() }
@@ -32,6 +52,8 @@ struct LedgerSettingsView: View {
     @Bindable var model: LedgerViewModel
     let recurring: RecurringViewModel
     var portable: PortableDataViewModel?
+    @State private var confirmingReset = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -51,10 +73,34 @@ struct LedgerSettingsView: View {
                     NavigationLink { PortableDataView(model: portable) } label: {
                         Label("导入与备份", systemImage: "externaldrive")
                     }.accessibilityIdentifier("settings.portable")
+                    Section {
+                        Button("清空所有数据", systemImage: "trash", role: .destructive) { confirmingReset = true }
+                            .disabled(portable.busy)
+                            .accessibilityIdentifier("settings.resetData")
+                        if portable.resetRevision > 0, model.categories.isEmpty, model.accounts.isEmpty {
+                            Text("清空完成。记账前请先新增分类和账户。")
+                                .accessibilityIdentifier("settings.resetComplete")
+                        }
+                    }
                 }
             }
             .navigationTitle("设置")
             .costNavigationChrome()
+            .alert("清空所有数据？", isPresented: $confirmingReset) {
+                Button("取消", role: .cancel) {}
+                Button("确认清空", role: .destructive) {
+                    Task { await portable?.resetLocalData() }
+                }.accessibilityIdentifier("settings.confirmReset")
+            } message: {
+                Text("这会永久删除本机账单、全部分类和账户、模板、周期规则、图片、草稿和设置，并移除行情 API Key。内置币种会恢复初始状态。需要保留的资料请先导出完整备份。")
+            }
+            .alert("无法完成清空", isPresented: Binding(
+                get: { portable?.resetError != nil }, set: { if !$0 { portable?.resetError = nil } }
+            )) {
+                Button("好", role: .cancel) { portable?.resetError = nil }
+            } message: {
+                Text(portable?.resetError ?? "")
+            }
         }
     }
     private var metadataSection: some View {

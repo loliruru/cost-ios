@@ -63,6 +63,11 @@ actor PortableSettingsStore: BaseCurrencyPreferences, AnomalyPreferencesReposito
 
     func snapshot() -> PortableSettings { settings }
 
+    func reset() throws {
+        try PortableFiles.removeIfPresent(file)
+        settings = PortableSettings()
+    }
+
     func replace(_ settings: PortableSettings) throws {
         try PortableFiles.directory(file.deletingLastPathComponent())
         try settings.encoded().write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])

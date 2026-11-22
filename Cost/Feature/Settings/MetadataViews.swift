@@ -4,9 +4,19 @@ struct MetadataListView: View {
     @Bindable var ledger: LedgerViewModel
     let kind: MetadataKind
     @State private var route: MetadataRoute?
+    private var isEmpty: Bool {
+        switch kind {
+        case .category: ledger.categories.isEmpty
+        case .account: ledger.accounts.isEmpty
+        case .tag: ledger.tags.isEmpty
+        }
+    }
+
     var body: some View {
         List {
-            if kind == .category {
+            if isEmpty {
+                ContentUnavailableView("暂无\(kind.title)", systemImage: "tray")
+            } else if kind == .category {
                 ForEach(ledger.categories, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
                         metadataRow(row.name, visual: row.visual, status: row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出"),

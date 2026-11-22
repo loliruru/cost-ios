@@ -5,15 +5,44 @@ import Observation
 final class PortableDataViewModel {
     private let repository: any PortableDataRepository
     private let onImport: @MainActor (PortableDataKind, PortableDataOutcome) async -> Void
+    private let onReset: @MainActor () async -> Void
     private(set) var preview: PortableDataPreview?
     private(set) var busy = false
     private(set) var status: String?
     var error: String?
+    private(set) var resetting = false
+    private(set) var resetPending = false
+    private(set) var resetRevision = 0
+    var resetError: String?
 
     init(repository: any PortableDataRepository,
-         onImport: @escaping @MainActor (PortableDataKind, PortableDataOutcome) async -> Void) {
+         onImport: @escaping @MainActor (PortableDataKind, PortableDataOutcome) async -> Void,
+         onReset: @escaping @MainActor () async -> Void) {
         self.repository = repository
         self.onImport = onImport
+        self.onReset = onReset
+    }
+
+    func resetLocalData() async {
+        guard !busy, !resetting else { return }
+        resetting = true
+        resetError = nil
+        defer { resetting = false }
+        do {
+            switch try await repository.resetLocalData() {
+            case .complete:
+                await onReset()
+                resetPending = false
+                preview = nil
+                status = nil
+                error = nil
+                resetRevision += 1
+            case .cleanupPending:
+                resetPending = true
+            }
+        } catch is CancellationError {} catch {
+            resetError = resetPending ? "无法完成清理，请重试。" : "无法清空数据。账本仍保留，请重试。"
+        }
     }
 
     func export(_ kind: PortableDataKind, password: String) async -> URL? {

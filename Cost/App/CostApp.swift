@@ -46,7 +46,7 @@ struct CostApp: App {
                 .alert("无法打开本地数据", isPresented: $container.startupFailed) {
                     Button("重试") { Task { await container.processRecurring() } }
                 } message: {
-                    Text("已有数据会保留。请重试，不要卸载应用。")
+                    Text("请重试以完成本机数据处理。")
                 }
         }
         .backgroundTask(.appRefresh(RecurringSystem.refreshIdentifier)) {

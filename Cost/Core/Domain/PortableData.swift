@@ -24,15 +24,20 @@ struct PortableDataOutcome: Sendable {
     let settingsPending: Bool
 }
 
+enum LocalDataResetOutcome: Sendable {
+    case complete, cleanupPending
+}
+
 protocol PortableDataRepository: Sendable {
     func export(_ kind: PortableDataKind, password: String) async throws -> URL
     func prepare(_ source: URL, kind: PortableDataKind, password: String) async throws -> PortableDataPreview
     func confirm(_ token: UUID) async throws -> PortableDataOutcome
     func discard(_ token: UUID) async
     func discardExport(_ file: URL) async
+    func resetLocalData() async throws -> LocalDataResetOutcome
 }
 
-/// Serializes recurring evaluation and publication, including settings replay.
+/// Serializes recurring evaluation with backup restoration and local resets.
 actor LedgerMaintenance {
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []

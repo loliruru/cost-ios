@@ -57,14 +57,7 @@ final class AppContainer {
             let visuals = ManagedVisualStore(database: database, root: mediaRoot)
             let preferences = try PortableSettingsStore(root: mediaRoot, suiteName: draftSuite)
             let maintenance = LedgerMaintenance()
-            let transfer = LocalPortableDataRepository(database: database, visuals: visuals, settings: preferences,
-                maintenance: maintenance, root: mediaRoot.appendingPathComponent("data-transfer", isDirectory: true))
-            try await transfer.clearAbandonedStages()
-            try await transfer.finishPendingSettings()
-            restoredTheme = await preferences.snapshot().theme_mode
-            let repositories = LedgerRepositories(database: database)
-            self.repositories = repositories
-            let base = try await preferredBaseCurrency(preferences, in: repositories.currencies)
+            let recurringSystem = RecurringSystem()
             let credentials: any QuoteCredentials
             #if DEBUG
             if draftSuite != nil { credentials = UITestQuoteCredentials() }
@@ -72,6 +65,20 @@ final class AppContainer {
             #else
             credentials = KeychainQuoteCredentials()
             #endif
+            let defaultsDomain = draftSuite ?? Bundle.main.bundleIdentifier
+            let transfer = LocalPortableDataRepository(database: database, visuals: visuals, settings: preferences,
+                maintenance: maintenance, root: mediaRoot.appendingPathComponent("data-transfer", isDirectory: true),
+                clearPrivateState: {
+                    try await credentials.setAPIKey(nil)
+                    await recurringSystem.resetLocalData()
+                    if let defaultsDomain { UserDefaults.standard.removePersistentDomain(forName: defaultsDomain) }
+                })
+            try await transfer.clearAbandonedStages()
+            try await transfer.finishPendingMaintenance()
+            restoredTheme = await preferences.snapshot().theme_mode
+            let repositories = LedgerRepositories(database: database)
+            self.repositories = repositories
+            let base = try await preferredBaseCurrency(preferences, in: repositories.currencies)
             let provider = TwelveDataQuotes(credentials: credentials, transport: TwelveDataTransport(), now: recurringEnvironment.now)
             let quotes = QuoteServices(credentials: credentials, fiatProvider: provider, marketProvider: provider,
                 fiatCache: repositories.fiatQuotes, marketCache: repositories.marketQuotes, now: recurringEnvironment.now)
@@ -87,13 +94,15 @@ final class AppContainer {
                 visuals: visuals, templates: repositories.templates, quotes: quotes, credentials: credentials,
                 basePreferences: preferences), environment: recurringEnvironment, baseCurrency: base)
             self.ledger = ledger
-            recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(),
-                environment: recurringEnvironment, maintenance: maintenance, recoverSettings: { try await transfer.finishPendingSettings() })
-            statistics = StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
-                preferenceStore: preferences,
-                coverageStore: PrivateRecordingCoverageStore(suiteName: draftSuite),
-                currency: base.code, environment: recurringEnvironment)
-            portable = PortableDataViewModel(repository: transfer) { [weak self] kind, outcome in
+            recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: recurringSystem,
+                environment: recurringEnvironment, maintenance: maintenance, recoverSettings: { try await transfer.finishPendingMaintenance() })
+            let coverage = PrivateRecordingCoverageStore(suiteName: draftSuite)
+            let makeStatistics: @MainActor (CurrencyCode) -> StatisticsViewModel = { [recurringEnvironment] currency in
+                StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
+                    preferenceStore: preferences, coverageStore: coverage, currency: currency, environment: recurringEnvironment)
+            }
+            statistics = makeStatistics(base.code)
+            portable = PortableDataViewModel(repository: transfer, onImport: { [weak self] kind, outcome in
                 guard let self else { return }
                 if kind == .backup {
                     if !outcome.settingsPending { self.restoredTheme = await preferences.snapshot().theme_mode }
@@ -103,7 +112,13 @@ final class AppContainer {
                 } else {
                     await self.ledger?.reload()
                 }
-            }
+            }, onReset: { [weak self] in
+                guard let self else { return }
+                self.restoredTheme = nil
+                await self.ledger?.refreshAfterRestore()
+                if let code = self.ledger?.baseCurrency?.code { self.statistics = makeStatistics(code) }
+                await self.recurring?.refreshAfterReset()
+            })
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.
