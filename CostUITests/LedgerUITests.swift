@@ -40,8 +40,26 @@ final class LedgerUITests: XCTestCase {
         let confirm = app.buttons.matching(identifier: "ledger.confirmDelete").firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10))
         confirm.tap()
-        XCTAssertTrue(app.buttons["撤销删除"].waitForExistence(timeout: 10))
-        app.buttons["撤销删除"].tap()
+        let undo = app.buttons["撤销删除"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 10))
+        XCTAssertTrue(updated.waitForNonExistence(timeout: 10))
+
+        func toggleDeletedFilter() {
+            app.navigationBars.buttons["筛选"].tap()
+            let filter = app.switches["ledger.filter.deleted"]
+            reveal(filter, in: app)
+            let control = filter.switches.firstMatch
+            (control.exists ? control : filter).tap()
+            app.navigationBars["筛选"].buttons["完成"].tap()
+        }
+
+        toggleDeletedFilter()
+        XCTAssertTrue(app.navigationBars["已删除账单"].waitForExistence(timeout: 10))
+        XCTAssertTrue(updated.waitForExistence(timeout: 10))
+        assertLabel(updated, contains: "已删除")
+        undo.tap()
+        XCTAssertTrue(app.staticTexts["没有已删除账单"].waitForExistence(timeout: 10))
+        toggleDeletedFilter()
         XCTAssertTrue(updated.waitForExistence(timeout: 10))
     }
 

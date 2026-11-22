@@ -206,6 +206,7 @@ struct LedgerFilterView: View {
                     ForEach(model.tags, id: \.id) { Text($0.name).tag($0.id as String?) }
                 }
                 Toggle("查看已删除账单", isOn: $model.query.deletedOnly)
+                    .accessibilityIdentifier("ledger.filter.deleted")
                 Section("按冻结业务日期筛选") {
                     Toggle("限定日期", isOn: $dateEnabled)
                     if dateEnabled {

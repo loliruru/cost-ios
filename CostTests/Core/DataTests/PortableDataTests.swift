@@ -6,6 +6,8 @@ import Testing
 private final class PortableFixtureMarker: NSObject {}
 
 struct PortableDataTests {
+    private typealias BackupSnapshot = [String: [[String: Data?]]]
+
     private struct Fixture: Decodable {
         let backup: Data
         let pbkdf2: String
@@ -18,8 +20,8 @@ struct PortableDataTests {
         let transfer: LocalPortableDataRepository
         var records: GRDBLedgerRepository { GRDBLedgerRepository(database: database) }
 
-        init(_ root: URL) throws {
-            let database = try AppDatabase.inMemory()
+        init(_ root: URL, database: AppDatabase? = nil) throws {
+            let database = try database ?? AppDatabase.inMemory()
             let visuals = ManagedVisualStore(database: database, root: root)
             let settings = try PortableSettingsStore(root: root, suiteName: UUID().uuidString)
             self.database = database
@@ -147,91 +149,189 @@ struct PortableDataTests {
         #expect(try await clean.records.transaction(id: "archived") == archived)
     }
 
-    @Test func currentBackupPreservesManagedMediaAndLargeLedgerAndReplaysPendingSettings() async throws {
+    @Test(.timeLimit(.minutes(1)))
+    func largeBackupRestoresEveryTableAfterDeletionAndReplaysPendingSettings() async throws {
         let root = try temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let sourceRoot = root.appendingPathComponent("source")
-        let targetRoot = root.appendingPathComponent("target")
-        try PortableFiles.directory(sourceRoot)
-        try PortableFiles.directory(targetRoot)
-        let source = try Ledger(sourceRoot)
-        let target = try Ledger(targetRoot)
-        try await source.settings.replace(PortableSettings(base_currency_code: "CNY", theme_mode: "DARK",
+        let database = try await AppDatabase.open(at: root.appendingPathComponent("ledger.sqlite"))
+        defer { try? database.writer.close() }
+        let ledger = try Ledger(root, database: database)
+        let cny = try CurrencyCode("CNY")
+        let preferences = PortableSettings(base_currency_code: "CNY", theme_mode: "DARK",
             glass_quality: "MEDIUM", anomaly_sensitivity: "HIGH", dynamic_color_enabled: false,
-            reduce_motion_enabled: true, anomaly_enabled: false))
+            reduce_motion_enabled: true, anomaly_enabled: false)
+        try await ledger.settings.replace(preferences)
         let png = root.appendingPathComponent("icon.png")
         try ManagedVisualTests().source().write(to: png)
-        let image = try await source.visuals.importImage(file: png, kind: .icon, owner: "fixture")
-        var account = try #require(try await source.records.account(id: "seed-default-account"))
+        let image = try await ledger.visuals.importImage(file: png, kind: .icon, owner: "fixture")
+        let imageBytes = try #require(try await ledger.visuals.imageData(id: image.id))
+        var account = try #require(try await ledger.records.account(id: "seed-default-account"))
         account.visual = LedgerVisual(iconKey: "wallet", source: .image, iconAssetID: image.id)
         account.updatedAt = 100
-        try await source.records.saveAccount(account)
-        try await source.records.saveAccount(Account(id: "invest", name: "合成投资账户", createdAt: 10, updatedAt: 10))
-        _ = try await source.records.saveOpening(AccountFundOpening(id: "opening-invest", accountID: "invest",
-            kind: .investmentCost, enabled: true, currencyCode: CurrencyCode("CNY"), scale: 2,
+        try await ledger.records.saveAccount(account)
+        try await ledger.records.saveAccount(Account(id: "invest", name: "合成投资账户", createdAt: 10, updatedAt: 10))
+        _ = try await ledger.records.saveOpening(AccountFundOpening(id: "opening-invest", accountID: "invest",
+            kind: .investmentCost, enabled: true, currencyCode: cny, scale: 2,
             amountMinor: 200_000, startedAt: 1000, createdAt: 1000))
-        let transfer = try await source.records.saveTransfer(
+        let transfer = try await ledger.records.saveTransfer(
             AccountFundsRepositoryTests().transfer(profit: 10_000, withdrawal: true), expectedUpdatedAt: nil)
+        let tag = try await ledger.records.saveTag(TestLedger.tag())
+        let sampleAmount = try Money(minorUnits: 500, currencyCode: cny, scale: 2)
+        let template = QuickTemplateContent(name: "合成模板", iconKey: "receipt", type: .expense,
+            amount: sampleAmount, categoryID: "seed-expense-other", accountID: account.id, note: nil, tagIDs: [tag.id])
+        _ = try await ledger.records.saveQuickTemplate(id: "sample-template", content: template, sortOrder: nil,
+            expectedUpdatedAt: nil, at: 1000)
         let content = try RecurringContent(name: "合成规则", type: .expense,
-            amount: Money(minorUnits: 500, currencyCode: CurrencyCode("CNY"), scale: 2), categoryID: "seed-expense-other",
-            accountID: "seed-default-account", note: nil, tagIDs: [],
+            amount: sampleAmount, categoryID: "seed-expense-other", accountID: account.id, note: nil, tagIDs: [tag.id],
             schedule: RecurringSchedule(startDay: 1, endDay: 1, minutes: 0, zoneID: "UTC"), catchUp: .createMissed)
-        try await source.records.saveRecurringRule(id: "sample-rule", content: content, expectedVersion: nil, at: 1000)
-        func process(_ ledger: Ledger) async throws {
+        try await ledger.records.saveRecurringRule(id: "sample-rule", content: content, expectedVersion: nil, at: 1000)
+        func process() async throws {
             let processor = ProcessRecurringRules(rules: ledger.records, currencies: ledger.records,
                 provider: UnconfiguredRecurringFiatProvider(), environment: LedgerEnvironment(now: { 2 * 86_400_000 }))
             var blocked: Set<String> = []
             _ = try await processor.runDue(excluding: &blocked)
         }
-        try await process(source)
-        try await source.database.writer.write { db in
-            for index in 0..<1_200 { try TransactionRecord(TestLedger.transaction(id: "bulk-\(index)")).insert(db) }
+        try await process()
+        try await ledger.records.saveFiatQuote(FiatQuote(id: "fixture-fx", original: CurrencyCode("USD"), base: cny,
+            rate: DecimalRate("7.123456789012345678"), providerID: "FIXTURE", dataTimestamp: 1000,
+            rateEpochDay: nil, fetchedAt: 1001, expiresAt: 301000, kind: .latest))
+        try await ledger.records.saveMarketQuote(MarketQuote(asset: CurrencyCode("BTC"), base: cny,
+            providerID: "FIXTURE", price: DecimalRate("500000.123456789012345678"), venue: "fixture",
+            dataTimestamp: 1000, fetchedAt: 1001, expiresAt: 301000))
+        let analytics = GRDBAnalyticsRepository(database: ledger.database)
+        try await analytics.saveAnomalyFeedback(AnomalyFeedback(id: "fixture-feedback", type: .markedNormal, kind: .category,
+            categoryID: "seed-expense-other", currency: cny, amount: FrozenAmount(units: DecimalInteger("500"), scale: 2),
+            version: AnomalyFeedback.featureVersion, createdAt: 1000))
+        let archived = try TestLedger.transaction(id: "archived", units: .max, updated: 11, deleted: 11,
+            tags: [tag.id], note: "=SUM(1,2)\r\n\"合成账本 Cafe\u{301}\"")
+        _ = try await ledger.records.createTransaction(archived)
+        let bulk = (0..<1_200).map { "bulk-\($0)" }
+        try await ledger.database.writer.write { db in
+            for id in bulk {
+                try TransactionRecord(TestLedger.transaction(id: id, occurred: 20 * 86_400_000, note: "千笔性能验证")).insert(db)
+            }
         }
-        let backup = try await source.transfer.export(.backup, password: "")
-        let preview = try await target.transfer.prepare(backup, kind: .backup, password: "")
-        #expect(preview.transactions == 1_202 && preview.images == 1)
 
-        let existing = try TestLedger.transaction(id: "target-before-restore")
-        _ = try await target.records.createTransaction(existing)
-        try await target.database.writer.write { db in
+        try await verifyLargeLedgerQueries(ledger, expectedIDs: bulk, currency: cny)
+        let original = try await snapshot(ledger)
+        let clock = ContinuousClock()
+        let backupStarted = clock.now
+        let backup = try await ledger.transfer.export(.backup, password: "")
+        let exportDuration = backupStarted.duration(to: clock.now)
+        #expect(exportDuration < .seconds(15))
+        let existing = try TestLedger.transaction(id: "created-after-export")
+        _ = try await ledger.records.createTransaction(existing)
+        #expect(try await ledger.records.softDeleteTransaction(id: "bulk-0", at: 20))
+        #expect(try await ledger.records.transaction(id: "bulk-0")?.deletedAt == 20)
+        try await ledger.settings.setBaseCurrencyCode("USD")
+        let changed = try await snapshot(ledger)
+        let previewStarted = clock.now
+        let preview = try await ledger.transfer.prepare(backup, kind: .backup, password: "")
+        let previewDuration = previewStarted.duration(to: clock.now)
+        #expect(previewDuration < .seconds(15))
+        #expect(preview.transactions == 1_203 && preview.images == 1)
+
+        try await ledger.database.writer.write { db in
             try db.execute(sql: """
                 CREATE TRIGGER fixture_failure BEFORE INSERT ON account_transfers
                 BEGIN SELECT RAISE(ABORT, 'fixture restore failure'); END
                 """)
         }
-        await #expect(throws: (any Error).self) { try await target.transfer.confirm(preview.token) }
-        #expect(try await target.records.transaction(id: existing.id) == existing)
-        #expect(try await target.database.writer.read { try VisualAssetRecord.fetchCount($0) } == 0)
-        let abandonedMedia = try FileManager.default.contentsOfDirectory(at: targetRoot.appendingPathComponent("visual_assets"),
-            includingPropertiesForKeys: nil)
-        #expect(abandonedMedia.isEmpty)
-        try await target.database.writer.write { try $0.execute(sql: "DROP TRIGGER fixture_failure") }
-        let retry = try await target.transfer.prepare(backup, kind: .backup, password: "")
+        await #expect(throws: (any Error).self) { try await ledger.transfer.confirm(preview.token) }
+        let afterFailure = try await snapshot(ledger)
+        expectSnapshot(afterFailure, equals: changed, after: "rollback")
+        #expect(try await ledger.visuals.imageData(id: image.id) == imageBytes)
+        let mediaFiles = try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("visual_assets").path)
+        #expect(mediaFiles == [URL(fileURLWithPath: image.relativePath).lastPathComponent])
+        try await ledger.database.writer.write { try $0.execute(sql: "DROP TRIGGER fixture_failure") }
+        let retry = try await ledger.transfer.prepare(backup, kind: .backup, password: "")
 
-        let blocker = targetRoot.appendingPathComponent("portable-settings.json")
+        let blocker = root.appendingPathComponent("portable-settings.json")
+        try FileManager.default.removeItem(at: blocker)
         try PortableFiles.directory(blocker)
         try Data([1]).write(to: blocker.appendingPathComponent("blocker"))
-        let outcome = try await target.transfer.confirm(retry.token)
-        #expect(outcome.settingsPending && outcome.imported == 1_202)
-        #expect(try await target.records.transaction(id: existing.id) == nil)
-        let row = try await target.database.writer.read { try VisualAssetRecord.fetchOne($0, key: image.id) }
+        let restoreStarted = clock.now
+        let outcome = try await ledger.transfer.confirm(retry.token)
+        let restoreDuration = restoreStarted.duration(to: clock.now)
+        #expect(restoreDuration < .seconds(15))
+        #expect(outcome.settingsPending && outcome.imported == 1_203)
+        #expect(try await ledger.records.transaction(id: existing.id) == nil)
+        #expect(try await ledger.records.transaction(id: "bulk-0")?.deletedAt == nil)
+        #expect(try await ledger.records.transaction(id: archived.id) == archived)
+        let row = try await ledger.database.writer.read { try VisualAssetRecord.fetchOne($0, key: image.id) }
         #expect(row?.relative_path != image.relativePath)
-        let sourceImage = try await source.visuals.imageData(id: image.id)
-        let restoredImage = try await target.visuals.imageData(id: image.id)
-        #expect(sourceImage != nil && sourceImage == restoredImage)
-        #expect(try await target.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } != nil)
+        #expect(try await ledger.visuals.imageData(id: image.id) == imageBytes)
+        #expect(try await ledger.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } != nil)
         try FileManager.default.removeItem(at: blocker)
-        try await target.transfer.finishPendingSettings()
-        #expect(try await target.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } == nil)
-        let preferences = await target.settings.snapshot()
-        #expect(preferences.theme_mode == "DARK" && preferences.glass_quality == "MEDIUM")
-        #expect(preferences.dynamic_color_enabled == false && preferences.reduce_motion_enabled == true)
-        #expect(preferences.anomaly_enabled == false && preferences.anomaly_sensitivity == "HIGH")
-        #expect(try await target.records.transfer(id: transfer.id) == transfer)
+        try await ledger.transfer.finishPendingSettings()
+        #expect(try await ledger.database.writer.read { try RestoreStateRecord.fetchOne($0, key: 1) } == nil)
+        let restoredPreferences = try PortableSettingsStore(root: root)
+        let restoredSettings = try await restoredPreferences.snapshot().encoded()
+        #expect(try restoredSettings == preferences.encoded())
+        let restored = try await snapshot(ledger)
+        expectSnapshot(restored, equals: original, after: "restore")
+        #expect(try await ledger.records.transfer(id: transfer.id) == transfer)
         let profit = try #require(transfer.profitTransactionID)
-        #expect(try await target.records.isManagedTransaction(id: profit))
-        try await process(target)
-        #expect(try await target.database.writer.read { try TransactionRecord.fetchCount($0) } == 1_202)
-        #expect(try await target.database.writer.read { try RecurringExecutionRecord.fetchCount($0) } == 1)
+        #expect(try await ledger.records.isManagedTransaction(id: profit))
+        try await process()
+        #expect(try await ledger.database.writer.read { try TransactionRecord.fetchCount($0) } == 1_203)
+        #expect(try await ledger.database.writer.read { try RecurringExecutionRecord.fetchCount($0) } == 1)
+    }
+
+    private func verifyLargeLedgerQueries(_ ledger: Ledger, expectedIDs: [String], currency: CurrencyCode) async throws {
+        let clock = ContinuousClock()
+        let start = clock.now
+        var query = LedgerQuery()
+        query.text = "千笔性能验证"
+        var matched: [String] = []
+        for _ in 0..<6 {
+            let page = try await ledger.records.searchTransactions(query)
+            #expect(page.rows.count == 200)
+            matched.append(contentsOf: page.rows.map(\.id))
+            query.cursor = page.next
+        }
+        #expect(query.cursor == nil)
+        #expect(matched == expectedIDs.sorted(by: >))
+        let range = try StatisticsRange(start: 20, endInclusive: 21)
+        let analytics = GRDBAnalyticsRepository(database: ledger.database)
+        var stream = analytics.observeStatistics(range: range, today: 21, currency: currency).makeAsyncIterator()
+        let input = try #require(try await stream.next())
+        let report = StatisticsReport(range: range, today: 21, currency: currency, input: input)
+        #expect(report.total.expense.description == "1480800")
+        let queryDuration = start.duration(to: clock.now)
+        #expect(queryDuration < .seconds(15))
+    }
+
+    private func snapshot(_ ledger: Ledger) async throws -> BackupSnapshot {
+        // Freeze the expected backup scope independently of the production copy plan.
+        let tables = [
+            "accounts", "account_fund_openings", "account_transfers", "anomaly_feedback", "categories",
+            "crypto_price_quotes", "currencies", "fx_quotes", "quick_templates", "quick_template_tags",
+            "recurring_executions", "recurring_rules", "recurring_rule_tags", "tags", "transactions",
+            "transaction_tags", "visual_assets",
+        ]
+        return try await ledger.database.writer.read { db in
+            var snapshot: BackupSnapshot = [:]
+            for table in tables {
+                let definitions = try db.columns(in: table)
+                // Restore assigns a fresh media path. The image bytes and stored digest are compared independently.
+                let columns = definitions.map(\.name).filter { table != "visual_assets" || $0 != "relative_path" }
+                    .map(PortableLedger.quote).joined(separator: ",")
+                let rows = try Row.fetchAll(db, sql: "SELECT \(columns) FROM \(PortableLedger.quote(table)) ORDER BY \(columns)")
+                #expect(!rows.isEmpty, "Fixture has no rows in \(table)")
+                snapshot[table] = try rows.map { row in
+                    try PortableLedger.record(row).mapValues { $0.map { Data($0.utf8) } }
+                }
+            }
+            #expect(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
+            return snapshot
+        }
+    }
+
+    private func expectSnapshot(_ actual: BackupSnapshot, equals expected: BackupSnapshot, after step: String) {
+        for (table, rows) in expected {
+            let matches = actual[table] == rows
+            #expect(matches, "Rows in \(table) differ after \(step)")
+        }
     }
 }

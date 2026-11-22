@@ -14,6 +14,19 @@ struct SnapshotTests {
         #expect(throws: LedgerError.invalidSnapshot) { try snapshot.validate() }
     }
 
+    @Test(arguments: [ValuationMethod.latest, .historical, .currentFallback, .cachedFallback, .marketPrice, .cachedMarketPrice])
+    func providerSnapshotsRequireBothFrozenTimestamps(_ method: ValuationMethod) throws {
+        let rate = try DecimalRate("7.123456789012345678")
+        let missingSourceTime = ExchangeRateSnapshot(rate: rate, providerID: "FIXTURE",
+            dataTimestamp: nil, fetchedAt: 1001, method: method)
+        let missingFetchTime = ExchangeRateSnapshot(rate: rate, providerID: "FIXTURE",
+            dataTimestamp: 1000, fetchedAt: nil, method: method)
+        #expect(throws: LedgerError.invalidSnapshot) { try missingSourceTime.validate() }
+        #expect(throws: LedgerError.invalidSnapshot) { try missingFetchTime.validate() }
+        try ExchangeRateSnapshot(rate: rate, providerID: "FIXTURE",
+            dataTimestamp: 1000, fetchedAt: 1001, method: method).validate()
+    }
+
     @Test
     func sourceDatesAndDeletionAreValidated() throws {
         #expect(throws: LedgerError.invalidField("sourceID")) { try TestLedger.transaction(source: .template) }

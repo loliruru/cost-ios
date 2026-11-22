@@ -45,9 +45,9 @@ struct LedgerFeatureTests {
         await vm.reload()
         let edited = try #require(vm.rows.first)
         #expect(edited.id == first.id && edited.requestKey == first.requestKey && edited.original.minorUnits == 2001)
-        await vm.delete(edited)
+        #expect(await vm.delete(edited))
         #expect(vm.rows.isEmpty && vm.undoID == first.id)
-        await vm.restore(id: first.id)
+        #expect(await vm.restore(id: first.id))
         #expect(vm.rows.first?.original.minorUnits == 2001 && vm.undoID == nil)
     }
     @Test func invalidInputAndForeignCurrencyKeepDraftAndRequestKey() async throws {

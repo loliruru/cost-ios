@@ -94,18 +94,39 @@ struct MigrationTests {
     }
 
     @Test
-    func onDiskDatabaseUsesWALAndSurvivesReopen() async throws {
+    func populatedV1DatabaseMigratesOnDiskAndSurvivesReopen() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let url = directory.appendingPathComponent("fixture.sqlite")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let first = try await AppDatabase.open(at: url)
-        try await first.writer.read { (db: Database) throws -> Void in #expect(try String.fetchOne(db, sql: "PRAGMA journal_mode") == "wal") }
-        let repository = GRDBLedgerRepository(database: first)
-        let transaction = try TestLedger.transaction(code: "USD", rate: "7.250000000001", method: .manualRate)
-        _ = try await repository.createTransaction(transaction)
-        try first.writer.close()
-        let second = try await AppDatabase.open(at: url)
-        #expect(try await GRDBLedgerRepository(database: second).transaction(id: transaction.id) == transaction)
-        try second.writer.close()
+        let legacy = try DatabaseQueue(path: url.path, configuration: AppDatabase.configuration())
+        try AppDatabase.makeMigrator().migrate(legacy, upTo: "v1_schema")
+        let seed = try JSONDecoder().decode(DatabaseSeed.self, from: DatabaseResources.data("CostSeedV1", extension: "json"))
+        let tag = TestLedger.tag()
+        let transaction = try TestLedger.transaction(code: "USD", rate: "7.250000000001", method: .manualRate,
+            requestKey: "legacy-request", tags: [tag.id], note: "旧版冻结估值")
+        try legacy.write { db in
+            try seed.install(in: db)
+            try db.execute(sql: "UPDATE accounts SET name = '旧版账户' WHERE id = 'seed-default-account'")
+            try TagRecord(tag).insert(db)
+            try GRDBLedgerRepository.insertTransaction(db, transaction)
+        }
+        try legacy.close()
+
+        for _ in 0..<2 {
+            let opened = try await AppDatabase.open(at: url)
+            defer { try? opened.writer.close() }
+            let repository = GRDBLedgerRepository(database: opened)
+            #expect(try await repository.transaction(requestKey: "legacy-request") == transaction)
+            #expect(try await repository.account(id: transaction.accountID)?.name == "旧版账户")
+            try await opened.writer.read { (db: Database) throws -> Void in
+                #expect(try String.fetchOne(db, sql: "PRAGMA journal_mode") == "wal")
+                #expect(try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"])
+                #expect(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
+                let migrations = try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
+                #expect(migrations == ["v1_schema", "v1_seed"])
+                #expect(try TransactionRecord.fetchCount(db) == 1)
+            }
+        }
     }
 }

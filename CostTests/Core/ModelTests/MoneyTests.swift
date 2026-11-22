@@ -60,4 +60,22 @@ struct MoneyTests {
         #expect(throws: NumericError.invalidCurrency) { try CurrencyCode("A") }
         #expect(throws: NumericError.invalidCurrency) { try CurrencyCode("CNY/JPY") }
     }
+
+    @Test
+    func multiplicationAndDivisionKeepScaleAndRejectRoundingToZeroOrOverflow() throws {
+        let code = try CurrencyCode("CNY")
+        let smallest = try Money(minorUnits: 1, currencyCode: code, scale: 18)
+        let three = try Money(minorUnits: 3, currencyCode: code, scale: 18)
+        let maximum = try Money(minorUnits: .max, currencyCode: code, scale: 18)
+        let two = try DecimalRate("2")
+        let half = try DecimalRate("0.5")
+        #expect(maximum.plainText == "9.223372036854775807")
+        #expect(try Money.parse(maximum.plainText, currencyCode: code, scale: 18) == maximum)
+        #expect(try three.multiplied(by: half) == Money(minorUnits: 2, currencyCode: code, scale: 18))
+        #expect(try three.divided(by: two) == three.multiplied(by: half))
+        #expect(throws: NumericError.roundsToZero) { try smallest.multiplied(by: half) }
+        #expect(throws: NumericError.roundsToZero) { try smallest.divided(by: two) }
+        #expect(throws: NumericError.overflow) { try maximum.multiplied(by: two) }
+        #expect(throws: NumericError.overflow) { try maximum.divided(by: half) }
+    }
 }
