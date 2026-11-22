@@ -112,7 +112,7 @@ struct PortableDataTests {
         let source = try Ledger(root.appendingPathComponent("source"))
         let target = try Ledger(root.appendingPathComponent("target"))
         let note = "=SUM(1,2)\r\n\"账本\"\\N"
-        let archived = try TestLedger.transaction(id: "archived", units: Int64.max, deleted: 11, note: note)
+        let archived = try TestLedger.transaction(id: "archived", units: Int64.max, updated: 11, deleted: 11, note: note)
         let row = try TestLedger.transaction(id: "same-id", requestKey: "unique", note: "new")
         _ = try await source.records.createTransaction(archived)
         _ = try await source.records.createTransaction(row)
