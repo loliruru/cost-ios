@@ -4,7 +4,7 @@
 
 ## 信息层级
 
-原生 SwiftUI、NavigationStack、TabView、系统 Sheet/菜单、SF Symbols。顶级目的地为账单、模板、循环、统计、设置；分类/账户/标签、资金、备份为次级入口。iOS 重新设计交互与布局，不照搬 Material 组件、AGSL、Android 玻璃透镜实现或其像素值。
+原生 SwiftUI、NavigationStack、TabView、系统 Sheet/菜单、SF Symbols。顶级目的地为账单、模板、统计、设置。周期记账、分类、账户、标签、资金和备份经设置进入。
 
 1. 内容层：账单、数字、图表和正文，稳定低噪声。
 2. 结构层：系统分组 surface、输入区域、间距及边界建立层级。

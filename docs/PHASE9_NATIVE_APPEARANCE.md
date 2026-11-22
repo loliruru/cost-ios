@@ -5,7 +5,7 @@
 ## 界面
 
 - iOS 26 的导航栏、Tab 和快速录入 Sheet 使用系统材质。「记一笔」位于账单页底部，在 iOS 26 使用原生 Liquid Glass。iOS 18 回退到 `ultraThinMaterial`。降低透明度和增强对比度使用不透明背景。 [Apple Liquid Glass](https://developer.apple.com/documentation/SwiftUI/Applying-Liquid-Glass-to-custom-views)
-- 浅色和深色各有适配的强调色和 App 图标。图标采用带加号的账页。内置图标沿用 SF Symbols，选择器显示可朗读的中文名称。账单的 emoji 与用户图片继续展示。
+- 浅色和深色各有适配的强调色，App 图标统一使用用户提供的白龙女孩与钱包插画。内置图标沿用 SF Symbols，选择器显示可朗读的中文名称。账单的 emoji 与用户图片继续展示。
 - 大字体下金额和值分行，分段选择器改用系统菜单。VoiceOver 可读出账单的方向、原金额及币种、分类和账户。快速录入关闭后，VoiceOver 焦点回到「记一笔」。
 - 保存账单、模板一键记账、删除和恢复成功后有触觉反馈。列表变更使用短动画，降低动态效果时停用应用层动画。
 
