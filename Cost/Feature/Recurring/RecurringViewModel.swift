@@ -8,6 +8,8 @@ final class RecurringViewModel {
     private let manage: ManageRecurringRules
     private let processor: ProcessRecurringRules
     private let system: RecurringSystem
+    private let maintenance: LedgerMaintenance
+    private let recoverSettings: @Sendable () async throws -> Void
     @ObservationIgnored private var reloadGeneration = 0
     @ObservationIgnored private var schedulingGeneration = 0
     private let failurePageSize = 50
@@ -20,10 +22,13 @@ final class RecurringViewModel {
     var error: String?
 
     init(ledger: LedgerViewModel, rules: any RecurringRepository, system: RecurringSystem,
-         environment: LedgerEnvironment = LedgerEnvironment()) {
+         environment: LedgerEnvironment = LedgerEnvironment(), maintenance: LedgerMaintenance = LedgerMaintenance(),
+         recoverSettings: @escaping @Sendable () async throws -> Void = {}) {
         self.ledger = ledger
         self.rules = rules
         self.system = system
+        self.maintenance = maintenance
+        self.recoverSettings = recoverSettings
         remindersEnabled = system.remindersEnabled
         manage = ManageRecurringRules(rules: rules, currencies: ledger.services.currencies, environment: environment)
         let provider: any RecurringFiatProvider = ledger.services.quotes.map { $0 as any RecurringFiatProvider } ?? UnconfiguredRecurringFiatProvider()
@@ -93,7 +98,10 @@ final class RecurringViewModel {
     func resolve(_ execution: RecurringExecution, skipping: Bool) async {
         var status: RecurringStatus?
         let changed = await change(process: false) {
-            status = try await processor.resolve(execution, skipping: skipping)
+            status = try await maintenance.withAccess {
+                try await self.recoverSettings()
+                return try await self.processor.resolve(execution, skipping: skipping)
+            }
             guard status != nil else { throw LedgerError.conflict }
         }
         if changed && status != .retryable { await run() }
@@ -107,13 +115,11 @@ final class RecurringViewModel {
     }
 
     func run(background: Bool = false) async {
-        var blocked: Set<String> = []
         do {
-            repeat {
-                let more = try await processor.runDue(excluding: &blocked)
-                if !more || background { break }
-                await Task.yield()
-            } while !Task.isCancelled
+            try await maintenance.withAccess {
+                try await self.recoverSettings()
+                try await self.runDue(background: background)
+            }
         } catch is CancellationError {} catch { if !background { self.error = message(for: error) } }
         guard !Task.isCancelled else { return }
         await refreshSchedules()
@@ -121,6 +127,20 @@ final class RecurringViewModel {
             await reload()
             await ledger.reload()
         }
+    }
+
+    private func runDue(background: Bool) async throws {
+        var blocked: Set<String> = []
+        repeat {
+            let more = try await processor.runDue(excluding: &blocked)
+            if !more || background { break }
+            await Task.yield()
+        } while !Task.isCancelled
+    }
+
+    func refreshAfterRestore() async {
+        await reload()
+        await refreshSchedules()
     }
 
     func rearmBackgroundRefresh() {

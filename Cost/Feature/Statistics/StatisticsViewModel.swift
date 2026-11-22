@@ -128,6 +128,13 @@ final class StatisticsViewModel {
         if followedDefault { currency = code }
     }
 
+    func refreshAfterRestore() async {
+        await loadPreferences()
+        statisticsRetry += 1
+        anomalyRetry += 1
+        frequencyRetry += 1
+    }
+
     func setRange(_ range: StatisticsRange) {
         customRange = range
         preset = .custom

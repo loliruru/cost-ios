@@ -155,7 +155,7 @@ extension GRDBLedgerRepository: QuickTemplateRepository {
     }
 }
 
-private extension QuickTemplateRecord {
+extension QuickTemplateRecord {
     func model(tagIDs: Set<String>) throws -> QuickTemplate {
         let content = try QuickTemplateContent(name: name, iconKey: icon_key,
             type: storedEnum(transaction_type, as: TransactionType.self),

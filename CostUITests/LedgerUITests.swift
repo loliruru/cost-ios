@@ -38,6 +38,22 @@ final class LedgerUITests: XCTestCase {
     }
 
     @MainActor
+    func testPortableDataSettingsExposeCSVAndBackupActions() {
+        let app = launch()
+        app.tabBars.buttons["设置"].tap()
+        let link = app.buttons["settings.portable"]
+        reveal(link, in: app)
+        link.tap()
+        XCTAssertTrue(app.buttons["portable.export.csv"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["portable.import.csv"].exists)
+        let password = app.secureTextFields["portable.password"]
+        reveal(password, in: app)
+        XCTAssertTrue(password.exists)
+        XCTAssertTrue(app.buttons["portable.export.backup"].exists)
+        XCTAssertTrue(app.buttons["portable.import.backup"].exists)
+    }
+
+    @MainActor
     func testForeignEntryWithActualSettlementAndKeySetting() {
         let app = launch()
         app.tabBars.buttons["设置"].tap()

@@ -12,11 +12,12 @@ struct CostApp: App {
         WindowGroup {
             Group {
                 if let ledger = container.ledger, let recurring = container.recurring, let statistics = container.statistics {
-                    LedgerRootView(model: ledger, recurring: recurring, statistics: statistics)
+                    LedgerRootView(model: ledger, recurring: recurring, statistics: statistics, portable: container.portable)
                 }
                 else { ProgressView("Cost") }
             }
                 .environment(container)
+                .preferredColorScheme(container.restoredTheme == "LIGHT" ? .light : container.restoredTheme == "DARK" ? .dark : nil)
                 .task(id: scenePhase) {
                     if scenePhase == .active {
                         container.statistics?.refreshDay()

@@ -4,12 +4,14 @@ struct LedgerRootView: View {
     @Bindable var model: LedgerViewModel
     let recurring: RecurringViewModel
     let statistics: StatisticsViewModel
+    var portable: PortableDataViewModel?
     var body: some View {
         TabView {
             LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
             QuickTemplatesView(ledger: model).tabItem { Label("模板", systemImage: "square.on.square") }
             StatisticsView(model: statistics).tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
-            LedgerSettingsView(model: model, recurring: recurring).tabItem { Label("设置", systemImage: "gearshape") }
+            LedgerSettingsView(model: model, recurring: recurring, portable: portable)
+                .tabItem { Label("设置", systemImage: "gearshape") }
         }
         .task { await model.reload() }
         .onChange(of: model.baseCurrency?.code) { _, code in
@@ -22,6 +24,7 @@ struct LedgerRootView: View {
 struct LedgerSettingsView: View {
     @Bindable var model: LedgerViewModel
     let recurring: RecurringViewModel
+    var portable: PortableDataViewModel?
     var body: some View {
         NavigationStack {
             List {
@@ -36,6 +39,11 @@ struct LedgerSettingsView: View {
                     NavigationLink { CurrencySettingsView(ledger: model) } label: {
                         Label("币种与报价", systemImage: "arrow.left.arrow.right.circle")
                     }.accessibilityIdentifier("settings.quotes")
+                }
+                if let portable {
+                    NavigationLink { PortableDataView(model: portable) } label: {
+                        Label("导入与备份", systemImage: "externaldrive")
+                    }.accessibilityIdentifier("settings.portable")
                 }
             }.navigationTitle("设置")
         }

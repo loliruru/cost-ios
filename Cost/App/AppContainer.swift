@@ -15,6 +15,8 @@ final class AppContainer {
     private(set) var ledger: LedgerViewModel?
     private(set) var recurring: RecurringViewModel?
     private(set) var statistics: StatisticsViewModel?
+    private(set) var portable: PortableDataViewModel?
+    private(set) var restoredTheme: String?
     var startupFailed = false
 
     init(mediaRoot: URL? = nil, recurringEnvironment: LedgerEnvironment = LedgerEnvironment(),
@@ -43,8 +45,6 @@ final class AppContainer {
         defer { isLoading = false; startup = nil }
         do {
             let database = try await openDatabase()
-            let repositories = LedgerRepositories(database: database)
-            self.repositories = repositories
             var mediaRoot = try configuredMediaRoot ?? ManagedVisualStore.defaultRoot()
             var draftSuite: String?
             #if DEBUG
@@ -55,7 +55,15 @@ final class AppContainer {
             }
             #endif
             let visuals = ManagedVisualStore(database: database, root: mediaRoot)
-            let preferences = PrivateBaseCurrencyPreferences(suiteName: draftSuite)
+            let preferences = try PortableSettingsStore(root: mediaRoot, suiteName: draftSuite)
+            let maintenance = LedgerMaintenance()
+            let transfer = LocalPortableDataRepository(database: database, visuals: visuals, settings: preferences,
+                maintenance: maintenance, root: mediaRoot.appendingPathComponent("data-transfer", isDirectory: true))
+            try await transfer.clearAbandonedStages()
+            try await transfer.finishPendingSettings()
+            restoredTheme = await preferences.snapshot().theme_mode
+            let repositories = LedgerRepositories(database: database)
+            self.repositories = repositories
             let base = try await preferredBaseCurrency(preferences, in: repositories.currencies)
             let credentials: any QuoteCredentials
             #if DEBUG
@@ -79,11 +87,23 @@ final class AppContainer {
                 visuals: visuals, templates: repositories.templates, quotes: quotes, credentials: credentials,
                 basePreferences: preferences), environment: recurringEnvironment, baseCurrency: base)
             self.ledger = ledger
-            recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(), environment: recurringEnvironment)
+            recurring = RecurringViewModel(ledger: ledger, rules: repositories.recurring, system: RecurringSystem(),
+                environment: recurringEnvironment, maintenance: maintenance, recoverSettings: { try await transfer.finishPendingSettings() })
             statistics = StatisticsViewModel(repository: repositories.statistics, anomalies: repositories.anomalies,
-                preferenceStore: PrivateAnomalyPreferences(suiteName: draftSuite),
+                preferenceStore: preferences,
                 coverageStore: PrivateRecordingCoverageStore(suiteName: draftSuite),
                 currency: base.code, environment: recurringEnvironment)
+            portable = PortableDataViewModel(repository: transfer) { [weak self] kind, outcome in
+                guard let self else { return }
+                if kind == .backup {
+                    if !outcome.settingsPending { self.restoredTheme = await preferences.snapshot().theme_mode }
+                    await self.ledger?.refreshAfterRestore()
+                    await self.statistics?.refreshAfterRestore()
+                    await self.recurring?.refreshAfterRestore()
+                } else {
+                    await self.ledger?.reload()
+                }
+            }
             isReady = true
         } catch {
             // SQL errors may include bound financial values. Never log/display their raw description.
@@ -91,6 +111,7 @@ final class AppContainer {
             ledger = nil
             recurring = nil
             statistics = nil
+            portable = nil
             startupFailed = true
         }
     }

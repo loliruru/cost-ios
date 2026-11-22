@@ -13,8 +13,8 @@
 | 4 | 快捷模板 | 完成（build 5，72 项 Swift 测试、4 项 UI 测试、Build / IPA 通过） |
 | 5 | 周期记账 | 完成（build 6，自动验证通过，2026-11-20 用户确认通过） |
 | 6 | 统计与异常 | 完成（build 9，自动验证通过，2026-11-21 用户确认通过） |
-| 7 | Fiat FX 与 Crypto 基础 | 技术完成（build 10，113 项 Swift 测试、8 项 UI 测试、Build / IPA 通过，待真机验收） |
-| 8 | CSV、完整备份与跨平台恢复 | 未开始 |
+| 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
+| 8 | CSV、完整备份与跨平台恢复 | 实现提交，待 macOS 构建及验收（0.8.0 / build 11） |
 | 9 | 原生 Glass 与 UI 精修 | 未开始 |
 | 10 | 全量测试与稳定性 | 未开始 |
 
@@ -123,11 +123,15 @@ Crypto 显式启用、独立 `/quote`/price 类型与缓存、实际扣款/单�
 
 实际验证（2026-11-21）完成模拟器构建、113 项 Swift 测试（含 8 项 Phase 7 用例）、8 项原生 UI 测试、未签名设备 Archive 和 IPA 校验。Windows 下载复核为 0.7.0 / build 10，arm64 iOS，SHA-256 与 CI 一致。真实 Twelve Data 联调与真机验收待完成。 [CI run 44917768260](https://github.com/loliruru/cost-ios/actions/runs/44917768260)
 
+2026-11-22 用户确认 Phase 7 通过并批准 Phase 8。
+
 ## Phase 8 — 备份与跨平台兼容
 
 Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryption、17 表/七项设置/图片/manifest、有界 staging、预检确认替换、trusted schema 重放、设置 outbox 和崩溃恢复。使用系统 Files 选择器；不实现任意银行 CSV 或另创不兼容 JSON 格式。
 
 先完成 ZIP/WebP/Room-GRDB 元数据与密码 Unicode 的具体实验，依赖约束无法满足时凭证据请求决定，禁止悄改格式或丢图片。验收 Android→iOS 与 iOS→Android fixture 往返、旧版本迁移、密码/损坏/ZIP 穿越/限额/中断/原子性、资金/规则幂等/图片完整和大数据量；不得为了验收修改 Android 生产仓库或真实账本。
+
+格式、实现与验证记录见 [Phase 8 记录](PHASE8_PORTABLE_DATA.md)。
 
 ## Phase 9 — Glass 与 UI 精修
 

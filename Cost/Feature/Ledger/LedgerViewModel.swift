@@ -123,6 +123,12 @@ final class LedgerViewModel {
             baseCurrency = result.7
         } catch is CancellationError {} catch { if token == generation { self.error = LedgerMessage.text(error) } }
     }
+    func refreshAfterRestore() async {
+        undoID = nil
+        notice = nil
+        query = LedgerQuery()
+        await reload()
+    }
     func loadMore() async {
         guard let nextCursor, !isBusy else { return }
         isBusy = true; defer { isBusy = false }

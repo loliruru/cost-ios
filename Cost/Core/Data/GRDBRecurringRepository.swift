@@ -184,7 +184,7 @@ extension GRDBLedgerRepository: RecurringRepository {
     }
 }
 
-private extension RecurringRuleRecord {
+extension RecurringRuleRecord {
     func model(tags: Set<String>) throws -> RecurringRule {
         let schedule = try RecurringSchedule(startDay: start_local_epoch_day, endDay: end_local_epoch_day,
             minutes: Int(scheduled_local_time_minutes), zoneID: zone_id, frequency: storedEnum(frequency, as: RecurringFrequency.self),
@@ -201,7 +201,7 @@ private extension RecurringRuleRecord {
     }
 }
 
-private extension RecurringExecutionRecord {
+extension RecurringExecutionRecord {
     func model() throws -> RecurringExecution {
         try RecurringExecution(id: id, ruleID: rule_id, scheduledAt: scheduled_at, status: storedEnum(status, as: RecurringStatus.self),
             transactionID: transaction_id, attempts: attempt_count, issue: last_error.map { try storedEnum($0, as: RecurringIssue.self) })

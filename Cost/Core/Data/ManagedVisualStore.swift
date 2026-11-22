@@ -77,6 +77,12 @@ actor ManagedVisualStore: ManagedVisualRepository {
         if waiters.isEmpty { maintenanceBusy = false }
         else { waiters.removeFirst().resume() }
     }
+    func withMaintenance<T: Sendable>(_ work: @Sendable () async throws -> T) async throws -> T {
+        await acquire()
+        defer { unlock() }
+        try Task.checkCancellation()
+        return try await work()
+    }
     init(database: AppDatabase, root: URL, environment: LedgerEnvironment = LedgerEnvironment()) {
         self.database = database; self.root = root; self.environment = environment
     }
