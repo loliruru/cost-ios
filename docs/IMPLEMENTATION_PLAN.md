@@ -14,7 +14,7 @@
 | 5 | 周期记账 | 完成（build 6，自动验证通过，2026-11-20 用户确认通过） |
 | 6 | 统计与异常 | 完成（build 9，自动验证通过，2026-11-21 用户确认通过） |
 | 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
-| 8 | CSV、完整备份与跨平台恢复 | 实现提交，待 macOS 构建及验收（0.8.0 / build 11） |
+| 8 | CSV、完整备份与跨平台恢复 | 自动验证通过（0.8.0 / build 11），待 Files 真机及 Android 应用互导验收 |
 | 9 | 原生 Glass 与 UI 精修 | 未开始 |
 | 10 | 全量测试与稳定性 | 未开始 |
 
@@ -132,6 +132,8 @@ Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryp
 先完成 ZIP/WebP/Room-GRDB 元数据与密码 Unicode 的具体实验，依赖约束无法满足时凭证据请求决定，禁止悄改格式或丢图片。验收 Android→iOS 与 iOS→Android fixture 往返、旧版本迁移、密码/损坏/ZIP 穿越/限额/中断/原子性、资金/规则幂等/图片完整和大数据量；不得为了验收修改 Android 生产仓库或真实账本。
 
 格式、实现与验证记录见 [Phase 8 记录](PHASE8_PORTABLE_DATA.md)。
+
+2026-11-22 模拟器 Build、117 项 Swift 测试、9 项原生 UI 测试和未签名设备 Archive 通过。Windows 已复核 0.8.0 / build 11 的 arm64 iOS IPA 和 SHA-256。Java 生成的旧版加密备份通过 iOS 恢复。Android 应用与 iOS 实际互导及设备 Files 操作待验收。 [CI run 44981029939](https://github.com/loliruru/cost-ios/actions/runs/44981029939)
 
 ## Phase 9 — Glass 与 UI 精修
 

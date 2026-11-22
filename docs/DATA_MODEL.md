@@ -80,7 +80,7 @@ Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环�
 
 GRDB 版本与 Android Room user_version 不共享：iOS v1 注册 v1_schema / v1_seed 两个原子 migration，application_id = 1129272137（COSI）、user_version = 1，历史存 grdb_migrations。未知应用 ID/版本/migration 或外来数据库拒绝打开，不自动擦除。资源 CostSchemaV1.sql 冻结 18 表及索引，62 个 guard 包含 Android 运行时约束、每表 INSERT/UPDATE 类型检查及资金标量校验；SQL NULL 不能绕过验证。GRDB DatabasePool 为私有磁盘库启用 WAL，内存 Queue 用于测试。
 
-Phase 8 从审计的 Room DDL 生成 v10 交换库，包含 Room identity、索引和 user_version。iOS 导入把数据重放到冻结的 GRDB schema；iOS 应用内部仍使用独立的 schema 和 migration 历史。
+Phase 8 从审计的 Room DDL 生成 v10 交换库，包含 Room identity、索引和 user_version。iOS 导入把数据重放到冻结的 GRDB schema。应用内部继续使用独立的 schema 和 migration 历史。
 
 ## 统计与异常数据
 
