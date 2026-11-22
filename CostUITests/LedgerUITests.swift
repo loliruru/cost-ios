@@ -191,6 +191,31 @@ final class LedgerUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, element.debugDescription)
     }
     @MainActor
+    func testNativeAppearanceKeepsNavigationAndSheetReachable() {
+        let app = launch()
+        let add = app.buttons["ledger.add"]
+        XCTAssertTrue(add.label.contains("记一笔"))
+        XCTAssertGreaterThanOrEqual(add.frame.height, 44)
+        XCTAssertTrue(app.tabBars.buttons["账单"].isSelected)
+        app.tabBars.buttons["设置"].tap()
+        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["账单"].tap()
+        add.tap()
+        let amount = app.textFields["entry.amount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 10))
+        XCTAssertTrue(amount.label.contains("金额"))
+        XCTAssertTrue(amount.label.contains("CNY"))
+        XCTAssertFalse(add.isHittable)
+        let save = app.buttons["entry.save"]
+        XCTAssertTrue(save.exists)
+        XCTAssertFalse(save.isEnabled)
+        app.buttons["关闭"].tap()
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        XCTAssertTrue(add.isHittable)
+        XCTAssertFalse(amount.exists)
+    }
+
+    @MainActor
     func testLargeTextDarkModeDraftRecoveryAndAccessibleSave() throws {
         let app = launch(largeText: true)
         app.buttons["ledger.add"].tap()
@@ -207,6 +232,8 @@ final class LedgerUITests: XCTestCase {
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.' AND label CONTAINS '123.45'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertTrue(row.isHittable)
+        XCTAssertTrue(row.label.contains("CNY"))
+        XCTAssertGreaterThanOrEqual(row.frame.height, 44)
     }
 
     @MainActor

@@ -15,7 +15,7 @@
 | 6 | 统计与异常 | 完成（build 9，自动验证通过，2026-11-21 用户确认通过） |
 | 7 | Fiat FX 与 Crypto 基础 | 完成（build 10，2026-11-22 用户确认通过） |
 | 8 | CSV、完整备份与跨平台恢复 | 通过（用户确认，真机 Files 与 Android 应用互导未测试） |
-| 9 | 原生 Glass 与 UI 精修 | 未开始 |
+| 9 | 原生 Glass 与 UI 精修 | 实现，待自动验证与用户真机验收 |
 | 10 | 全量测试与稳定性 | 未开始 |
 
 ## 共用交付门禁
@@ -142,6 +142,8 @@ Cost CSV 固定编码及 context_json、冲突原子合并；COSTBK01 ZIP/encryp
 支持 iOS 26 SDK 的工具链、原生 glassEffect 与 iOS 18 fallback、Light/Dark、Dynamic Type、SF Symbols、App 图标、触觉、动效、VoiceOver 全路径。材质只用于控制层，先有界假数据样例再接业务。
 
 验收：自动化可访问性/布局/降低透明度与动画测试；用户真机材质/美感/动效 PASS；Build+Test 后提交停止。
+
+2026-11-22 用户批准开始。实现和验收步骤见 [Phase 9 记录](PHASE9_NATIVE_APPEARANCE.md)。
 
 ## Phase 10 — 完整验证与稳定性
 

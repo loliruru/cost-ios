@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from argparse import ArgumentParser
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,10 @@ def version(text: str) -> tuple[int, ...]:
 
 
 def main() -> None:
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime-major", type=int)
+    parser.add_argument("--evidence", type=Path, default=Path("build/simulator.json"))
+    options = parser.parse_args()
     sdk = subprocess.check_output(
         ["xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"], text=True,
     ).strip()
@@ -28,17 +33,20 @@ def main() -> None:
         runtime_version = version(match.group(1).replace("-", "."))
         if not ((18, 0) <= runtime_version <= version(sdk)):
             continue
+        if options.runtime_major is not None and runtime_version[0] != options.runtime_major:
+            continue
         for device in devices:
             if device.get("isAvailable") and device["name"].startswith("iPhone"):
                 candidates.append((runtime_version, device["name"] == "iPhone 16", device["name"], runtime, device))
     if not candidates:
-        raise SystemExit(f"No available iPhone runtime for iOS 18 through SDK {sdk}")
+        requested = f"iOS {options.runtime_major}" if options.runtime_major else "iOS 18 or later"
+        raise SystemExit(f"No available {requested} iPhone runtime compatible with SDK {sdk}")
     _, _, _, runtime, selected = max(candidates, key=lambda item: item[:3])
     destination = f"platform=iOS Simulator,id={selected['udid']}"
     evidence = {"runtime": runtime, "name": selected["name"], "udid": selected["udid"],
                 "sdk": sdk, "destination": destination}
-    Path("build").mkdir(exist_ok=True)
-    Path("build/simulator.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+    options.evidence.parent.mkdir(parents=True, exist_ok=True)
+    options.evidence.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     if output := os.environ.get("GITHUB_OUTPUT"):
         with open(output, "a", encoding="utf-8") as stream:
             stream.write(f"destination={destination}\n")

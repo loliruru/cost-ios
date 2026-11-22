@@ -1,6 +1,6 @@
 # Cost iOS 设计系统
 
-状态：Phase 3 已实现原生账单/设置导航与业务表单，验证与真机验收状态见 [Phase 3](PHASE3_CORE_LEDGER.md)。尚未进行 Phase 9 的 Glass 精修；没有用户主观视觉 PASS 结论。
+状态：原生导航和业务表单已在 Phase 3 交付。Phase 9 的材质、布局与真机验收见 [Phase 9](PHASE9_NATIVE_APPEARANCE.md)。
 
 ## 信息层级
 
@@ -14,11 +14,11 @@
 
 ## 平台材质与封装
 
-后续在 `Core/DesignSystem` 提供统一的颜色、字体、间距、形状、motion、haptic、Glass 组件。所有 availability、可访问性和性能回退在这里处理，Feature 不散落版本判断或魔法透明度。
+导航、Tab、快速录入 Sheet 和记账按钮的材质选择集中在 `CostChrome`。正文沿用系统分组背景、列表与表单。标准排版、触觉和动效分别由 DesignSystem 中的组件处理。
 
-iOS 26+ 在对应 SDK 编译并经 `#available(iOS 26.0, *)` 保护后使用原生 glassEffect；iOS 18...25 使用 ultraThinMaterial，必要时提高 surface 对比度。编译期 SDK 不支持新符号时不能仅靠运行期保护宣称可编译，需在 Phase 9 确认 Xcode/SDK 并保持最低部署 18.0。
+iOS 26 以系统材质呈现导航、Tab 与 Sheet，记账按钮使用受可用性保护的 `glassEffect`。iOS 18 使用 `ultraThinMaterial` 回退。开启降低透明度或增强对比度时使用不透明系统背景。低电量模式将记账按钮改用系统材质。
 
-尊重 Reduce Transparency、Increase Contrast、Reduce Motion、低电量与可测性能信号；功能、尺寸、信息顺序及语义不因材质回退改变。不复制 Android AUTO 帧阈值到 iOS 冒充已测策略。
+材质切换保留原有控件尺寸、顺序与语义。系统负责页面转场和 Sheet 动画，降低动态效果时关闭应用自定义的账单变更动画和录入展开动画。关键记账操作成功后提供触觉反馈。
 
 ## 排版、颜色和布局
 

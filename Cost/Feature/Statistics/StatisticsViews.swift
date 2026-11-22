@@ -43,6 +43,7 @@ struct StatisticsView: View {
                 }
             }
             .navigationTitle("统计")
+            .costNavigationChrome()
             .toolbar {
                 NavigationLink {
                     SpendingAnomaliesView(model: model)
@@ -74,11 +75,7 @@ struct StatisticsView: View {
     }
 
     private func summaryAmount(_ label: String, _ value: String, id: String) -> some View {
-        LabeledContent(label, value: value)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(label))
-            .accessibilityValue(Text(value))
-            .accessibilityIdentifier(id)
+        CostValueRow(label, value: value).accessibilityIdentifier(id)
     }
 
     private func trend(_ report: StatisticsReport) -> some View {
@@ -88,7 +85,7 @@ struct StatisticsView: View {
         return Section("收支趋势") {
             Picker("周期", selection: $period) {
                 ForEach(StatisticsPeriod.allCases) { Text($0.rawValue).tag($0) }
-            }.pickerStyle(.segmented)
+            }.costSegmentedPicker()
 
             Chart(visible) { bucket in
                 let day = Int(bucket.id)
@@ -119,10 +116,11 @@ struct StatisticsView: View {
                 List(buckets) { bucket in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(StatisticsDisplay.range(bucket.days) + (bucket.partial ? "（未满期）" : "")).font(.headline)
-                        LabeledContent("收入", value: StatisticsDisplay.money(bucket.cashFlow.income, in: report))
-                        LabeledContent("支出", value: StatisticsDisplay.money(bucket.cashFlow.expense, in: report))
+                        CostValueRow("收入", value: StatisticsDisplay.money(bucket.cashFlow.income, in: report))
+                        CostValueRow("支出", value: StatisticsDisplay.money(bucket.cashFlow.expense, in: report))
                     }
                 }.navigationTitle("趋势明细")
+                    .costNavigationChrome()
             } label: {
                 Label("趋势明细（\(buckets.count) 个周期）", systemImage: "list.bullet")
             }.accessibilityIdentifier("statistics.trend.detail")
@@ -160,7 +158,7 @@ struct StatisticsView: View {
         Section("平均支出") {
             ForEach(report.averages) { average in
                 VStack(alignment: .leading, spacing: 5) {
-                    LabeledContent("\(average.period.rawValue)均", value: StatisticsDisplay.money(average.units, in: report))
+                    CostValueRow("\(average.period.rawValue)均", value: StatisticsDisplay.money(average.units, in: report))
                     Text("\(average.count) 个\(average.period.rawValue)周期" + (average.partial ? "，含未满期" : ""))
                         .font(.footnote).foregroundStyle(.secondary)
                 }.accessibilityElement(children: .combine)
@@ -170,9 +168,9 @@ struct StatisticsView: View {
 
     private func comparisons(_ report: StatisticsReport) -> some View {
         Section("支出比较") {
-            LabeledContent("今日对比昨日", value: StatisticsDisplay.change(report.today, in: report))
-            LabeledContent("环比", value: StatisticsDisplay.change(report.previous, in: report))
-            LabeledContent("同比", value: StatisticsDisplay.change(report.lastYear, in: report))
+            CostValueRow("今日对比昨日", value: StatisticsDisplay.change(report.today, in: report))
+            CostValueRow("环比", value: StatisticsDisplay.change(report.previous, in: report))
+            CostValueRow("同比", value: StatisticsDisplay.change(report.lastYear, in: report))
         }
     }
 }
@@ -202,6 +200,7 @@ private struct StatisticsDateSheet: View {
             .environment(\.calendar, Calendar.utc)
             .environment(\.timeZone, Calendar.utc.timeZone)
             .navigationTitle("自定义期间")
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

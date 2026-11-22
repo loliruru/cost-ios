@@ -68,6 +68,7 @@ struct CurrencySettingsView: View {
         }
         .disabled(model.busy)
         .navigationTitle("币种与报价")
+        .costNavigationChrome()
         .task { await model.load() }
         .onDisappear { key = "" }
         .confirmationDialog("更改本位币会影响之后新建的账单。", isPresented: $confirmBase, titleVisibility: .visible) {
@@ -95,7 +96,7 @@ struct CurrencySettingsView: View {
 
     private var keySection: some View {
         Section {
-            LabeledContent("API Key", value: model.hasKey ? "已配置" : "未配置")
+            CostValueRow("API Key", value: model.hasKey ? "已配置" : "未配置")
             SecureField("输入 API Key", text: $key)
                 .textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier("settings.quoteKey")
@@ -145,12 +146,12 @@ struct FrozenQuoteRows: View {
     }
 
     var body: some View {
-        LabeledContent("每单位原币估值", value: snapshot.rate.text)
-        LabeledContent("估值方式", value: method)
-        LabeledContent("来源", value: snapshot.providerID)
-        if let venue { LabeledContent("市场", value: venue) }
-        if let instant = snapshot.dataTimestamp { LabeledContent("数据时间", value: time(instant)) }
-        if let instant = snapshot.fetchedAt { LabeledContent("抓取时间", value: time(instant)) }
+        CostValueRow("每单位原币估值", value: snapshot.rate.text)
+        CostValueRow("估值方式", value: method)
+        CostValueRow("来源", value: snapshot.providerID)
+        if let venue { CostValueRow("市场", value: venue) }
+        if let instant = snapshot.dataTimestamp { CostValueRow("数据时间", value: time(instant)) }
+        if let instant = snapshot.fetchedAt { CostValueRow("抓取时间", value: time(instant)) }
     }
 
     private func time(_ instant: Int64) -> String {

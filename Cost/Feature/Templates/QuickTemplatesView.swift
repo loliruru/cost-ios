@@ -31,6 +31,7 @@ struct QuickTemplatesView: View {
                 }
             }
             .navigationTitle("快捷模板")
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("新增模板", systemImage: "plus") { editor = TemplateEditorRoute(template: nil) }
@@ -43,8 +44,9 @@ struct QuickTemplatesView: View {
                 QuickTemplateEditorView(templates: model, existing: route.template)
             }
             .sheet(item: $entry) { route in
-                EntryView(ledger: model.ledger, prefilled: route.draft)
+                EntryView(ledger: model.ledger, prefilled: route.draft).costEntrySheet()
             }
+            .onChange(of: model.recorded?.id) { _, id in if id != nil { CostHaptics.success() } }
             .ledgerError($model.error)
         }
     }
@@ -152,6 +154,7 @@ private struct QuickTemplateEditorView: View {
             }
             .disabled(model.isBusy)
             .navigationTitle(model.existing == nil ? "新增模板" : "编辑模板")
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(model.isBusy) }
                 ToolbarItem(placement: .confirmationAction) {
@@ -177,7 +180,7 @@ private struct QuickTemplateEditorView: View {
                     Label("当前图标", systemImage: LedgerStyle.symbol(model.draft.iconKey)).tag(model.draft.iconKey)
                 }
                 ForEach(LedgerStyle.iconKeys, id: \.self) { key in
-                    Label(key, systemImage: LedgerStyle.symbol(key)).tag(key)
+                    Label(LedgerStyle.iconTitle(key), systemImage: LedgerStyle.symbol(key)).tag(key)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {

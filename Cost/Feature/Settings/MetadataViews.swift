@@ -9,27 +9,52 @@ struct MetadataListView: View {
             if kind == .category {
                 ForEach(ledger.categories, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
-                        HStack { LedgerIcon(visual: row.visual, repository: ledger.services.visuals); Text((row.parentID == nil ? "" : "↳ ") + row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出")).font(.caption).foregroundStyle(.secondary) }
+                        metadataRow(row.name, visual: row.visual, status: row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出"),
+                            subcategory: row.parentID != nil)
                     }.foregroundStyle(.primary)
                 }
             } else if kind == .account {
                 ForEach(ledger.accounts, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
-                        HStack { LedgerIcon(visual: row.visual, repository: ledger.services.visuals); Text(row.name); Spacer(); Text(row.isArchived ? "已停用" : (row.isDefault ? "默认" : "")).font(.caption).foregroundStyle(.secondary) }
+                        metadataRow(row.name, visual: row.visual, status: row.isArchived ? "已停用" : (row.isDefault ? "默认" : nil))
                     }.foregroundStyle(.primary)
                 }
             } else {
                 ForEach(ledger.tags, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
-                        HStack { Text(row.name); Spacer(); if row.isArchived { Text("已停用").foregroundStyle(.secondary) } }
+                        metadataRow(row.name, status: row.isArchived ? "已停用" : nil)
                     }.foregroundStyle(.primary)
                 }
             }
         }
         .navigationTitle(kind.title)
+        .costNavigationChrome()
         .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("新增\(kind.title)", systemImage: "plus") { route = MetadataRoute(recordID: nil) } } }
         .sheet(item: $route) { route in MetadataEditorView(ledger: ledger, kind: kind, recordID: route.recordID) }
         .refreshable { await ledger.reload() }
+    }
+
+    private func metadataRow(_ name: String, visual: LedgerVisual? = nil, status: String?, subcategory: Bool = false) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            if let visual { LedgerIcon(visual: visual, repository: ledger.services.visuals) }
+            VStack(alignment: .leading, spacing: 4) {
+                if subcategory {
+                    Label {
+                        Text(name)
+                    } icon: {
+                        Image(systemName: "arrow.turn.down.right").accessibilityHidden(true)
+                    }
+                } else {
+                    Text(name)
+                }
+                if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityLabel([name, subcategory ? "子分类" : nil, status].compactMap { $0 }.joined(separator: "，"))
     }
 }
 
@@ -82,7 +107,12 @@ struct MetadataEditorView: View {
                             TextField("单个 Emoji", text: Binding(get: { model.visual.emoji ?? "" }, set: { model.visual.emoji = $0 }))
                         } else {
                             Picker("内置图标", selection: $model.visual.iconKey) {
-                                ForEach(LedgerStyle.iconKeys, id: \.self) { key in Label(key, systemImage: LedgerStyle.symbol(key)).tag(key) }
+                                if !LedgerStyle.iconKeys.contains(model.visual.iconKey) {
+                                    Label("当前图标", systemImage: LedgerStyle.symbol(model.visual.iconKey)).tag(model.visual.iconKey)
+                                }
+                                ForEach(LedgerStyle.iconKeys, id: \.self) { key in
+                                    Label(LedgerStyle.iconTitle(key), systemImage: LedgerStyle.symbol(key)).tag(key)
+                                }
                             }
                         }
                         LedgerIcon(visual: model.visual, repository: model.ledger.services.visuals)
@@ -98,6 +128,7 @@ struct MetadataEditorView: View {
                 }
             }
             .navigationTitle((model.recordID == nil ? "新增" : "编辑") + model.kind.title)
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(model.isBusy) }
                 ToolbarItem(placement: .confirmationAction) { Button("保存") {

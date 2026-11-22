@@ -23,7 +23,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 40
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       HOMEBREW_NO_AUTO_UPDATE: "1"
 
     steps:
@@ -72,7 +72,7 @@ jobs:
       - name: Select and boot an available iPhone simulator
         id: simulator
         timeout-minutes: 5
-        run: python3 scripts/select_simulator.py
+        run: python3 scripts/select_simulator.py --runtime-major 26
 
       - name: Build for simulator
         run: |
@@ -132,6 +132,32 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
             | tee build/logs/device-archive.log
 
+      - name: Select and boot an iOS 18 iPhone simulator
+        id: legacy-simulator
+        timeout-minutes: 6
+        run: |
+          xcrun simctl shutdown booted
+          python3 scripts/select_simulator.py --runtime-major 18 --evidence build/simulator-ios18.json
+
+      - name: Exercise the iOS 18 material fallback
+        timeout-minutes: 10
+        env:
+          SIMULATOR_DESTINATION: ${{ steps.legacy-simulator.outputs.destination }}
+        run: |
+          xcodebuild test-without-building \
+            -project Cost.xcodeproj -scheme CostUITests \
+            -destination "$SIMULATOR_DESTINATION" \
+            -configuration Debug \
+            -derivedDataPath build/DerivedData-simulator \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            -parallel-testing-enabled NO \
+            -only-testing:CostUITests/LedgerUITests/testLargeTextDarkModeDraftRecoveryAndAccessibleSave \
+            -only-testing:CostUITests/LedgerUITests/testNativeAppearanceKeepsNavigationAndSheetReachable \
+            -resultBundlePath build/results/CostUITests-iOS18.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/logs/ui-tests-ios18.log
+
       - name: Package and verify unsigned IPA
         run: |
           mkdir -p build/Payload
@@ -163,9 +189,11 @@ jobs:
             build/logs/
             build/results/CostTests.xcresult/
             build/results/CostUITests.xcresult/
+            build/results/CostUITests-iOS18.xcresult/
             build/Package.resolved
             build/dependency-resolution.json
             build/simulator.json
+            build/simulator-ios18.json
             build/ipa-verification.json
           if-no-files-found: warn
           retention-days: 30

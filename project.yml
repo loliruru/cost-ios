@@ -4,7 +4,7 @@ options:
   bundleIdPrefix: com.personal
   deploymentTarget:
     iOS: "18.0"
-  xcodeVersion: "16.4"
+  xcodeVersion: "26.3"
   developmentLanguage: zh-Hans
   generateEmptyDirectories: true
 
@@ -22,8 +22,8 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     TARGETED_DEVICE_FAMILY: "1"
-    MARKETING_VERSION: "0.8.0"
-    CURRENT_PROJECT_VERSION: "11"
+    MARKETING_VERSION: "0.9.0"
+    CURRENT_PROJECT_VERSION: "12"
     CODE_SIGNING_ALLOWED: "NO"
     CODE_SIGNING_REQUIRED: "NO"
     CODE_SIGN_IDENTITY: ""
@@ -51,8 +51,8 @@ targets:
         INFOPLIST_FILE: Cost/Info.plist
         GENERATE_INFOPLIST_FILE: "NO"
         TARGETED_DEVICE_FAMILY: "1"
-        # XcodeGen's AppIcon preset is cleared until icon assets are added in Phase 9.
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
   CostTests:
     type: bundle.unit-test
     platform: iOS

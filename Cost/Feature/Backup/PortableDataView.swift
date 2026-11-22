@@ -41,6 +41,7 @@ struct PortableDataView: View {
         }
         .disabled(model.busy)
         .navigationTitle("导入与备份")
+        .costNavigationChrome()
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: importKind == .csv ? [.commaSeparatedText] : [.data]) { result in
             let kind = importKind
             let secret = takePassword(for: kind)

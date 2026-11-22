@@ -6,6 +6,7 @@ import UIKit
 struct CostApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var container = AppContainer(recurringEnvironment: Self.recurringEnvironment())
+    @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     var body: some Scene {
         let appContainer = container
@@ -17,7 +18,14 @@ struct CostApp: App {
                 else { ProgressView("Cost") }
             }
                 .environment(container)
+                .environment(\.costLowPower, lowPower)
                 .preferredColorScheme(container.restoredTheme == "LIGHT" ? .light : container.restoredTheme == "DARK" ? .dark : nil)
+                .task {
+                    let changes = NotificationCenter.default.notifications(named: .NSProcessInfoPowerStateDidChange)
+                        .map { _ in () }
+                    lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+                    for await _ in changes { lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled }
+                }
                 .task(id: scenePhase) {
                     if scenePhase == .active {
                         container.statistics?.refreshDay()

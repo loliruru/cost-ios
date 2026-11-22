@@ -2,9 +2,7 @@
 
 独立的 iOS 原生 Cost 记账应用。开发环境为 Windows；Swift 6 / SwiftUI / iOS 18+，数据库使用 GRDB，工程由 XcodeGen 生成。Android 参考项目只读。
 
-Phase 3 已通过真机验收。Phase 4 快捷模板已完成，通过 72 项 Swift 测试、4 项原生 UI 测试及构建和 IPA 检查。[快捷模板验证与真机试用步骤](docs/PHASE4_QUICK_TEMPLATES.md)
-
-[Phase 4 已验证 IPA（0.4.0 / build 5）](https://github.com/loliruru/cost-ios/actions/runs/44340678945/artifacts/14443892963)（需登录 GitHub，artifact 保留 30 天）。SideStore/Sideloadly 签名和 iPhone 安装由用户手动完成。当前支持本币记账，外币模板可保留草稿，估值在 Phase 7 提供。
+阶段状态与已验证 IPA 见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。原生材质和真机试用步骤见 [Phase 9](docs/PHASE9_NATIVE_APPEARANCE.md)。
 
 先读 [协作规则](AGENTS.md)、[实施计划](docs/IMPLEMENTATION_PLAN.md)、[审计报告](docs/ANDROID_AUDIT.md)和[技术决策](docs/DECISIONS.md)。原始计划保存在 [cost-ios-codex-plan.md](cost-ios-codex-plan.md)。
 
@@ -19,13 +17,13 @@ git diff --check
 
 若 Python 不在 PATH，可用 Codex `load_workspace_dependencies` 返回的 Python 可执行文件；不要提交本机绝对运行时路径。
 
-CI 入口为 [Build Cost iOS](https://github.com/loliruru/cost-ios/actions/workflows/build.yml)，在 main push、指向 main 的 pull request 或手动触发时执行。macOS 手动复现示例：
+CI 在 main push、指向 main 的 pull request 或手动触发时执行。macOS 使用 Xcode 26.3，安装 iOS 26 和 iOS 18 模拟器运行时。 [Build Cost iOS](https://github.com/loliruru/cost-ios/actions/workflows/build.yml)
 
 ```sh
 xcodegen generate
 xcodebuild -resolvePackageDependencies -project Cost.xcodeproj -scheme Cost
 xcodebuild build -project Cost.xcodeproj -scheme Cost -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
-python3 scripts/select_simulator.py
+python3 scripts/select_simulator.py --runtime-major 26
 # 使用 build/simulator.json 中的 destination 运行测试
 xcodebuild test -project Cost.xcodeproj -scheme CostTests -destination '<已选择的 destination>' CODE_SIGNING_ALLOWED=NO
 ```

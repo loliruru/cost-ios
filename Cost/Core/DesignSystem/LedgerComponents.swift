@@ -1,10 +1,18 @@
 import SwiftUI
 
 enum LedgerStyle {
-    static let iconKeys = ["tag", "cart", "fork.knife", "car", "house", "heart", "creditcard", "banknote", "briefcase", "gift", "airplane", "wallet", "receipt"]
+    private static let builtInIcons = [
+        ("tag", "标签"), ("cart", "购物车"), ("fork.knife", "餐具"), ("car", "汽车"),
+        ("house", "房屋"), ("heart", "爱心"), ("creditcard", "银行卡"), ("banknote", "钞票"),
+        ("briefcase", "公文包"), ("gift", "礼物"), ("airplane", "飞机"), ("wallet", "钱包"), ("receipt", "收据"),
+    ]
+    static var iconKeys: [String] { builtInIcons.map { $0.0 } }
+    static func iconTitle(_ key: String) -> String {
+        builtInIcons.first { $0.0 == key }?.1 ?? "默认图标"
+    }
     static func symbol(_ key: String) -> String {
         if key == "wallet" { return "wallet.bifold" }
-        return iconKeys.contains(key) ? key : "circle.grid.2x2"
+        return builtInIcons.contains { $0.0 == key } ? key : "circle.grid.2x2"
     }
     static func amount(_ row: LedgerTransaction) -> String {
         (row.type == .expense ? "−" : "+") + row.original.plainText + " " + row.original.currencyCode.rawValue
@@ -33,7 +41,7 @@ struct LedgerIcon: View {
         Group {
             if visual.source == .image, let repository { ManagedPicture(id: visual.iconAssetID, repository: repository, icon: true).frame(width: 36, height: 36).clipShape(.rect(cornerRadius: 8)) }
             else if visual.source == .emoji, let emoji = visual.emoji { Text(emoji) }
-            else { Image(systemName: LedgerStyle.symbol(visual.iconKey)) }
+            else { Image(systemName: LedgerStyle.symbol(visual.iconKey)).foregroundStyle(Color.accentColor) }
         }
         .font(.title3).frame(minWidth: 36, minHeight: 44).accessibilityHidden(true)
     }

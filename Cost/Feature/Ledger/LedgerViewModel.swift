@@ -141,19 +141,26 @@ final class LedgerViewModel {
             self.nextCursor = page.next
         } catch { self.error = LedgerMessage.text(error) }
     }
-    func perform(_ work: () async throws -> Void) async {
-        guard !isBusy else { return }
+    @discardableResult
+    func perform(_ work: () async throws -> Void) async -> Bool {
+        guard !isBusy else { return false }
         isBusy = true; defer { isBusy = false }
-        do { try await work(); await reload() }
-        catch { self.error = LedgerMessage.text(error) }
+        do {
+            try await work()
+            await reload()
+            return true
+        } catch {
+            self.error = LedgerMessage.text(error)
+            return false
+        }
     }
-    func delete(_ row: LedgerTransaction) async {
+    func delete(_ row: LedgerTransaction) async -> Bool {
         await perform {
             guard try await services.transactions.softDeleteTransaction(id: row.id, at: environment.timestamp(after: row.updatedAt)) else { throw LedgerError.conflict }
             undoID = row.id; notice = "账单已删除，可撤销；也可在已删除账单中恢复。"
         }
     }
-    func restore(id: String) async {
+    func restore(id: String) async -> Bool {
         await perform {
             guard let row = try await services.transactions.transaction(id: id),
                   try await services.transactions.restoreTransaction(id: id, at: environment.timestamp(after: row.updatedAt)) else { throw LedgerError.conflict }

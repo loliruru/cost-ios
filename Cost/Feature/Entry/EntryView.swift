@@ -7,6 +7,7 @@ struct EntryView: View {
     @State private var newTag = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(ledger: LedgerViewModel, existing: LedgerTransaction? = nil, prefilled: EntryDraft? = nil) {
         self.ledger = ledger
         _model = State(initialValue: EntryViewModel(services: ledger.services, categories: ledger.categories,
@@ -29,7 +30,7 @@ struct EntryView: View {
                 Section {
                     Picker("收支", selection: $model.draft.type) {
                         Text("支出").tag(TransactionType.expense); Text("收入").tag(TransactionType.income)
-                    }.pickerStyle(.segmented)
+                    }.costSegmentedPicker()
                     TextField("金额", text: $model.draft.amount).keyboardType(.decimalPad).font(.largeTitle).monospacedDigit()
                         .accessibilityLabel("金额，\(model.draft.currencyCode)").accessibilityIdentifier("entry.amount")
                     Picker("币种", selection: Binding(get: { model.draft.currencyCode }, set: { model.selectCurrency($0) })) {
@@ -42,7 +43,12 @@ struct EntryView: View {
                     Picker("分类", selection: $model.draft.categoryID) {
                         Text("请选择").tag("")
                         ForEach(ledger.categories.filter { $0.type == model.draft.type && (!$0.isArchived || $0.id == model.existing?.categoryID) }, id: \.id) { category in
-                            Text((category.parentID == nil ? "" : "　↳ ") + category.name + (category.isArchived ? "（已停用）" : "")).tag(category.id)
+                            let title = category.name + (category.isArchived ? "（已停用）" : "")
+                            if category.parentID != nil {
+                                Label(title, systemImage: "arrow.turn.down.right").tag(category.id)
+                            } else {
+                                Text(title).tag(category.id)
+                            }
                         }
                     }.accessibilityIdentifier("entry.category")
                 } footer: { Text("先填写金额和分类，即可保存。关闭会保留草稿。") }
@@ -52,28 +58,45 @@ struct EntryView: View {
                         ForEach(ledger.accounts.filter { !$0.isArchived || $0.id == model.existing?.accountID }, id: \.id) { Text($0.name + ($0.isArchived ? "（已停用）" : "")).tag($0.id) }
                     }
                     DatePicker("发生时间", selection: date).environment(\.timeZone, TimeZone(identifier: model.draft.zoneID) ?? .current)
-                    LabeledContent("冻结时区", value: model.draft.zoneID)
+                    CostValueRow("冻结时区", value: model.draft.zoneID)
                     TextField("备注", text: $model.draft.note, axis: .vertical).lineLimit(3...8)
                     ForEach(ledger.tags.filter { !$0.isArchived || model.draft.tagIDs.contains($0.id) }, id: \.id) { tag in
                         Toggle(tag.name, isOn: Binding(get: { model.draft.tagIDs.contains(tag.id) }, set: { if $0 { model.draft.tagIDs.insert(tag.id) } else { model.draft.tagIDs.remove(tag.id) } }))
                     }
-                    HStack {
+                    CostAdaptiveStack {
                         TextField("新标签（同名自动复用）", text: $newTag)
                         Button("添加") { Task {
                             if await model.addTag(name: newTag) { newTag = ""; await ledger.reload() }
                         } }.disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ledger.isBusy)
                     }
                 }
+                .transaction { transaction in
+                    if reduceMotion {
+                        transaction.animation = nil
+                        transaction.disablesAnimations = true
+                    }
+                }
                 if model.draft.currencyCode != model.draft.baseCurrencyCode { valuationSection }
             }
             .disabled(model.isBusy)
             .navigationTitle(model.existing != nil ? "编辑账单" : (model.draft.sourceTemplateID == nil ? "记一笔" : "从模板记账"))
+            .navigationBarTitleDisplayMode(.inline)
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { Task { await model.persist(); dismiss() } }.disabled(model.isBusy)
+                        .accessibilityHint("保留草稿")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(model.isBusy ? "保存中" : "保存") { Task { if await model.save() { await ledger.reload(); dismiss() } } }
+                    Button(model.isBusy ? "保存中" : "保存") {
+                        Task {
+                            if await model.save() {
+                                CostHaptics.success()
+                                await ledger.reload()
+                                dismiss()
+                            }
+                        }
+                    }
                         .disabled(model.isBusy || model.draft.amount.isEmpty || model.draft.categoryID.isEmpty || model.draft.accountID.isEmpty)
                         .accessibilityIdentifier("entry.save")
                 }
@@ -96,7 +119,7 @@ struct EntryView: View {
     private var valuationSection: some View {
         Section {
             if let existing = model.existing, existing.original.currencyCode.rawValue == model.draft.currencyCode {
-                LabeledContent("已冻结金额", value: existing.convertedBase.plainText + " " + existing.convertedBase.currencyCode.rawValue)
+                CostValueRow("已冻结金额", value: existing.convertedBase.plainText + " " + existing.convertedBase.currencyCode.rawValue)
             }
             TextField("实际结算金额", text: Binding(get: { model.draft.actualBaseAmount ?? "" }, set: { model.draft.actualBaseAmount = $0 }))
                 .keyboardType(.decimalPad).accessibilityIdentifier("entry.actualSettlement")

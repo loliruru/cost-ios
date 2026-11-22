@@ -7,11 +7,18 @@ struct LedgerRootView: View {
     var portable: PortableDataViewModel?
     var body: some View {
         TabView {
-            LedgerListView(model: model).tabItem { Label("账单", systemImage: "list.bullet.rectangle") }
-            QuickTemplatesView(ledger: model).tabItem { Label("模板", systemImage: "square.on.square") }
-            StatisticsView(model: statistics).tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
-            LedgerSettingsView(model: model, recurring: recurring, portable: portable)
-                .tabItem { Label("设置", systemImage: "gearshape") }
+            Tab("账单", systemImage: "list.bullet.rectangle") {
+                LedgerListView(model: model).costTabChrome()
+            }
+            Tab("模板", systemImage: "square.on.square") {
+                QuickTemplatesView(ledger: model).costTabChrome()
+            }
+            Tab("统计", systemImage: "chart.bar.xaxis") {
+                StatisticsView(model: statistics).costTabChrome()
+            }
+            Tab("设置", systemImage: "gearshape") {
+                LedgerSettingsView(model: model, recurring: recurring, portable: portable).costTabChrome()
+            }
         }
         .task { await model.reload() }
         .onChange(of: model.baseCurrency?.code) { _, code in
@@ -45,7 +52,9 @@ struct LedgerSettingsView: View {
                         Label("导入与备份", systemImage: "externaldrive")
                     }.accessibilityIdentifier("settings.portable")
                 }
-            }.navigationTitle("设置")
+            }
+            .navigationTitle("设置")
+            .costNavigationChrome()
         }
     }
     private var metadataSection: some View {
@@ -68,6 +77,9 @@ struct LedgerListView: View {
     @State private var showEntry = false
     @State private var showFilters = false
     @State private var detail: LedgerTransaction?
+    @AccessibilityFocusState(for: .voiceOver) private var addFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     private var days: [Int64] { Set(model.rows.map { $0.occurredAt.localEpochDay }).sorted(by: >) }
     var body: some View {
         NavigationStack {
@@ -75,11 +87,12 @@ struct LedgerListView: View {
                 if let notice = model.notice {
                     Section {
                         Text(notice).font(.callout)
-                        if let id = model.undoID { Button("撤销删除") { Task { await model.restore(id: id) } }.disabled(model.isBusy) }
+                        if let id = model.undoID { Button("撤销删除") { restore(id: id) }.disabled(model.isBusy) }
                     }
                 }
                 if model.rows.isEmpty {
-                    ContentUnavailableView(model.query.deletedOnly ? "没有已删除账单" : "暂无账单", systemImage: "tray", description: Text("点击右上角加号记一笔，或调整搜索和筛选条件。"))
+                    ContentUnavailableView(model.query.deletedOnly ? "没有已删除账单" : "暂无账单", systemImage: "tray",
+                        description: Text(model.query.deletedOnly ? "可调整搜索和筛选条件。" : "轻点「记一笔」新增账单，或调整搜索和筛选条件。"))
                 }
                 ForEach(days, id: \.self) { day in
                     Section(LedgerStyle.day(day)) {
@@ -91,36 +104,75 @@ struct LedgerListView: View {
                                         Text(model.categoryName(row.categoryID)).foregroundStyle(.primary)
                                         Text(LedgerStyle.amount(row)).font(.headline).monospacedDigit().foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                                         Text(model.accountName(row.accountID)).font(.caption).foregroundStyle(.secondary)
-                                        if let note = row.note { Text(note).font(.subheadline).foregroundStyle(.secondary).lineLimit(2) }
+                                    if let note = row.note {
+                                        Text(note).font(.subheadline).foregroundStyle(.secondary)
+                                            .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                                    }
                                     }
                                     Spacer(minLength: 0)
-                                    Image(systemName: "chevron.right").foregroundStyle(.tertiary).accessibilityHidden(true)
+                                    if !typeSize.isAccessibilitySize {
+                                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary).accessibilityHidden(true)
+                                    }
                                 }
                             }
-                            .accessibilityLabel("\(row.type == .expense ? "支出" : "收入")，\(LedgerStyle.amount(row))，\(model.categoryName(row.categoryID))，\(model.accountName(row.accountID))，\(row.note ?? "")")
+                            .accessibilityLabel(rowLabel(row))
                             .accessibilityIdentifier("ledger.row.\(row.id)")
                             .swipeActions {
-                                if row.deletedAt == nil { Button("删除", role: .destructive) { Task { await model.delete(row) } } }
-                                else { Button("恢复") { Task { await model.restore(id: row.id) } }.tint(.green) }
+                                if row.deletedAt == nil {
+                                    Button("删除", systemImage: "trash", role: .destructive) { delete(row) }
+                                } else {
+                                    Button("恢复", systemImage: "arrow.uturn.backward") { restore(id: row.id) }.tint(.accentColor)
+                                }
                             }
                         }
                     }
                 }
                 if model.nextCursor != nil { Button("加载更多账单") { Task { await model.loadMore() } }.disabled(model.isBusy) }
             }
+            .animation(CostMotion.ledgerChange(reduceMotion: reduceMotion), value: model.undoID)
             .navigationTitle(model.query.deletedOnly ? "已删除账单" : "账单")
+            .costNavigationChrome()
             .searchable(text: $model.query.text, prompt: "备注、分类、账户或标签")
             .refreshable { await model.reload() }
             .task(id: model.query) { await model.reload() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("筛选", systemImage: "line.3.horizontal.decrease") { showFilters = true } }
-                ToolbarItem(placement: .topBarTrailing) { Button("记一笔", systemImage: "plus") { showEntry = true }.accessibilityIdentifier("ledger.add") }
             }
-            .sheet(isPresented: $showEntry, onDismiss: { Task { await model.reload() } }) {
-                EntryView(ledger: model).presentationDetents([.large])
+            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+                CostEntryButton { showEntry = true }
+                    .accessibilityIdentifier("ledger.add")
+                    .accessibilityFocused($addFocused)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+            }
+            .sheet(isPresented: $showEntry, onDismiss: {
+                addFocused = true
+                Task { await model.reload() }
+            }) {
+                EntryView(ledger: model).costEntrySheet()
             }
             .sheet(isPresented: $showFilters) { LedgerFilterView(model: model) }
             .sheet(item: $detail, onDismiss: { Task { await model.reload() } }) { row in LedgerDetailView(ledger: model, row: row) }
+        }
+    }
+
+    private func rowLabel(_ row: LedgerTransaction) -> String {
+        var parts = [row.type == .expense ? "支出" : "收入", LedgerStyle.amount(row),
+            model.categoryName(row.categoryID), model.accountName(row.accountID)]
+        if let note = row.note, !note.isEmpty { parts.append(note) }
+        if row.deletedAt != nil { parts.append("已删除") }
+        return parts.joined(separator: "，")
+    }
+
+    private func delete(_ row: LedgerTransaction) {
+        Task {
+            if await model.delete(row) { CostHaptics.success() }
+        }
+    }
+
+    private func restore(id: String) {
+        Task {
+            if await model.restore(id: id) { CostHaptics.success() }
         }
     }
 }
@@ -164,6 +216,7 @@ struct LedgerFilterView: View {
                 Button("重置筛选") { model.query = LedgerQuery(); dateEnabled = false }
             }
             .navigationTitle("筛选")
+            .costNavigationChrome()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") {
                 model.query.startDay = dateEnabled ? Calendar.localGregorian.dateComponents([.year, .month, .day], from: start).dateEpochDay : nil
                 model.query.endDayExclusive = dateEnabled ? Calendar.localGregorian.dateComponents([.year, .month, .day], from: end).dateEpochDay.map { $0 + 1 } : nil
@@ -202,27 +255,33 @@ struct LedgerDetailView: View {
                         ManagedPicture(id: id, repository: ledger.services.visuals, focus: visual.backgroundFocus).frame(height: 160).clipShape(.rect(cornerRadius: 12))
                     }
                     Text(LedgerStyle.amount(row)).font(.largeTitle).monospacedDigit().textSelection(.enabled)
-                    LabeledContent("类型", value: row.type == .expense ? "支出" : "收入")
-                    LabeledContent("分类", value: ledger.categoryName(row.categoryID))
-                    LabeledContent("账户", value: ledger.accountName(row.accountID))
-                    LabeledContent("业务日期", value: LedgerStyle.day(row.occurredAt.localEpochDay))
-                    LabeledContent("时区", value: row.occurredAt.zoneID)
+                    CostValueRow("类型", value: row.type == .expense ? "支出" : "收入")
+                    CostValueRow("分类", value: ledger.categoryName(row.categoryID))
+                    CostValueRow("账户", value: ledger.accountName(row.accountID))
+                    CostValueRow("业务日期", value: LedgerStyle.day(row.occurredAt.localEpochDay))
+                    CostValueRow("时区", value: row.occurredAt.zoneID)
                     Text(LedgerStyle.occurred(row.occurredAt))
                     if let note = row.note { Text(note).textSelection(.enabled) }
                     if !row.tagIDs.isEmpty { Text(ledger.tags.filter { row.tagIDs.contains($0.id) }.map(\.name).joined(separator: "、")) }
                 }
                 Section("冻结估值") {
-                    LabeledContent("本位币金额", value: row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("本位币金额")
-                        .accessibilityValue(row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
+                    CostValueRow("本位币金额", value: row.convertedBase.plainText + " " + row.convertedBase.currencyCode.rawValue)
                         .accessibilityIdentifier("ledger.frozenBase")
                     FrozenQuoteRows(snapshot: row.exchangeRate, venue: row.crypto?.venue)
                 }
                 if managed {
                     Text("这笔损益随本金转账保存和撤销。请在设置 → 资金起点与本金转账中操作。")
                 } else if checked {
-                    if row.deletedAt != nil { Button("恢复账单") { Task { await ledger.restore(id: row.id); if ledger.error == nil { dismiss() } } } }
+                    if row.deletedAt != nil {
+                        Button("恢复账单") {
+                            Task {
+                                if await ledger.restore(id: row.id) {
+                                    CostHaptics.success()
+                                    dismiss()
+                                }
+                            }
+                        }
+                    }
                     else {
                         Button("编辑账单") { editing = true }.accessibilityIdentifier("ledger.edit")
                         Button("删除账单", role: .destructive) { deleting = true }
@@ -230,10 +289,20 @@ struct LedgerDetailView: View {
                 }
             }
             .navigationTitle("账单详情")
+            .costNavigationChrome()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { dismiss() } } }
-            .sheet(isPresented: $editing, onDismiss: { dismiss() }) { EntryView(ledger: ledger, existing: row) }
+            .sheet(isPresented: $editing, onDismiss: { dismiss() }) {
+                EntryView(ledger: ledger, existing: row).costEntrySheet()
+            }
             .confirmationDialog("删除后可撤销，也可从已删除账单恢复。", isPresented: $deleting, titleVisibility: .visible) {
-                Button("删除", role: .destructive) { Task { await ledger.delete(row); if ledger.error == nil { dismiss() } } }
+                Button("删除", role: .destructive) {
+                    Task {
+                        if await ledger.delete(row) {
+                            CostHaptics.success()
+                            dismiss()
+                        }
+                    }
+                }
             }
             .disabled(ledger.isBusy)
             .task {

@@ -34,6 +34,7 @@ struct FundsListView: View {
             }
         }
         .navigationTitle("账户资金")
+        .costNavigationChrome()
         .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("本金转账", systemImage: "plus") { route = FundsRoute() } } }
         .sheet(item: $route) { route in FundsEditorView(ledger: ledger, account: route.account, existing: route.transfer) }
         .refreshable { await ledger.reload() }
@@ -74,7 +75,7 @@ struct FundsEditorView: View {
                     } header: { Text("本金") } footer: { Text("只支持同币法币本金转账。损益仅适用于投入成本 → 可用金额，自动关联收支账单。手续费请单独记支出。") }
                     Section {
                         DatePicker("发生时间", selection: $model.date).environment(\.timeZone, TimeZone(identifier: model.zoneID) ?? .current)
-                        LabeledContent("时区", value: model.zoneID)
+                        CostValueRow("时区", value: model.zoneID)
                         TextField("备注", text: $model.note, axis: .vertical)
                     }
                     if let existing = model.existing {
@@ -85,6 +86,7 @@ struct FundsEditorView: View {
                 }
             }
             .navigationTitle(model.account == nil ? "本金转账" : "资金起点")
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("保存") {

@@ -15,8 +15,8 @@ struct SpendingAnomaliesView: View {
                     Picker("期间", selection: $model.anomalyWindow) {
                         ForEach(AnomalyWindow.allCases) { Text("近 \($0.rawValue) 天").tag($0) }
                     }
-                    .pickerStyle(.segmented)
-                    LabeledContent("冻结本位币", value: model.currency.rawValue)
+                    .costSegmentedPicker()
+                    CostValueRow("冻结本位币", value: model.currency.rawValue)
                 }
                 if preferences.enabled { findings }
                 frequencySection
@@ -28,6 +28,7 @@ struct SpendingAnomaliesView: View {
             }
         }
         .navigationTitle("异常开支")
+        .costNavigationChrome()
         .task { await model.loadPreferences() }
         .task { await model.loadCoverage() }
         .task(id: model.detectionQuery) { await model.observeAnomalies(model.detectionQuery) }
@@ -241,6 +242,7 @@ private struct RecordingCoverageView: View {
         .environment(\.calendar, Calendar.utc)
         .environment(\.timeZone, Calendar.utc.timeZone)
         .navigationTitle("记账覆盖")
+        .costNavigationChrome()
         .ledgerError($model.coverageError)
     }
 

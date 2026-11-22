@@ -40,6 +40,7 @@ struct RecurringRulesView: View {
             }
         }
         .navigationTitle("周期记账")
+        .costNavigationChrome()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("新增规则", systemImage: "plus") { editor = RecurringEditorRoute(rule: nil) }
@@ -117,6 +118,7 @@ private struct RecurringEditorView: View {
             }
             .disabled(model.isBusy)
             .navigationTitle(rule == nil ? "新增周期规则" : "编辑周期规则")
+            .costNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(model.isBusy) }
                 ToolbarItem(placement: .confirmationAction) {
@@ -179,7 +181,12 @@ private struct RecurringEditorView: View {
                 ForEach(RecurringFrequency.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             frequencyFields
-            LabeledContent("时区") { Button(draft.schedule.zoneID) { selectingZone = true } }
+            Button {
+                selectingZone = true
+            } label: {
+                CostValueRow("时区", value: draft.schedule.zoneID)
+            }
+            .accessibilityHint("选择周期规则的时区")
             DatePicker("开始日期", selection: dayBinding(end: false), displayedComponents: .date)
             Toggle("设置结束日期", isOn: Binding(get: { draft.schedule.endDay != nil }, set: {
                 draft.schedule.endDay = $0 ? draft.schedule.startDay : nil
@@ -265,6 +272,7 @@ private struct RecurringEditorView: View {
                 Button(zone) { draft.schedule.zoneID = zone; selectingZone = false }
             }
             .navigationTitle("选择时区")
+            .costNavigationChrome()
             .searchable(text: $zoneSearch, prompt: "搜索城市或时区 ID")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { selectingZone = false } } }
         }
