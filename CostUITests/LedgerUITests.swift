@@ -105,10 +105,14 @@ final class LedgerUITests: XCTestCase {
         reveal(reset, in: app)
         reset.tap()
         XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
-        confirmation.buttons["确认清空"].tap()
-        XCTAssertTrue(app.staticTexts["settings.resetComplete"].waitForExistence(timeout: 10))
+        let confirmReset = confirmation.buttons.matching(identifier: "settings.confirmReset").firstMatch
+        XCTAssertTrue(confirmReset.waitForExistence(timeout: 10))
+        confirmReset.tap()
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 10))
 
-        app.tabBars.buttons["账单"].tap()
+        let ledger = app.tabBars.buttons["账单"]
+        XCTAssertTrue(ledger.waitForExistence(timeout: 10))
+        ledger.tap()
         XCTAssertTrue(app.staticTexts["暂无账单"].waitForExistence(timeout: 10))
         XCTAssertFalse(row.exists)
         app.tabBars.buttons["设置"].tap()
