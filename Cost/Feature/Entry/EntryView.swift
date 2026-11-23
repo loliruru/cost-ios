@@ -42,7 +42,7 @@ struct EntryView: View {
                     }.pickerStyle(.menu).accessibilityIdentifier("entry.currency")
                     Picker("分类", selection: $model.draft.categoryID) {
                         Text("请选择").tag("")
-                        ForEach(ledger.categories.filter { $0.type == model.draft.type && (!$0.isArchived || $0.id == model.existing?.categoryID) }, id: \.id) { category in
+                        ForEach(ledger.categoriesInHierarchy.filter { $0.type == model.draft.type && (!$0.isArchived || $0.id == model.existing?.categoryID) }, id: \.id) { category in
                             let title = category.name + (category.isArchived ? "（已停用）" : "")
                             if category.parentID != nil {
                                 Label(title, systemImage: "arrow.turn.down.right").tag(category.id)

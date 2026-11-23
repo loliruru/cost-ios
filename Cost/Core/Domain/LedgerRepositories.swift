@@ -12,6 +12,7 @@ protocol CategoryRepository: Sendable {
     func categories(includeArchived: Bool) async throws -> [Category]
     func category(id: String) async throws -> Category?
     func saveCategory(_ category: Category) async throws
+    func installBuiltInCategories() async throws -> Int
     func archiveCategory(id: String, at timestamp: Int64) async throws
     func deleteArchivedCategory(id: String) async throws -> CategoryDeletionResult
 }

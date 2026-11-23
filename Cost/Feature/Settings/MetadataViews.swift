@@ -4,6 +4,8 @@ struct MetadataListView: View {
     @Bindable var ledger: LedgerViewModel
     let kind: MetadataKind
     @State private var route: MetadataRoute?
+    @State private var addedCategoryCount = 0
+    @State private var showsCatalogResult = false
     private var isEmpty: Bool {
         switch kind {
         case .category: ledger.categories.isEmpty
@@ -14,15 +16,23 @@ struct MetadataListView: View {
 
     var body: some View {
         List {
+            if kind == .category {
+                Button("添加内置分类", systemImage: "square.grid.2x2") {
+                    Task {
+                        if let added = await ledger.installBuiltInCategories() {
+                            addedCategoryCount = added
+                            showsCatalogResult = true
+                        }
+                    }
+                }
+                .disabled(ledger.isBusy)
+            }
             if isEmpty {
                 ContentUnavailableView("暂无\(kind.title)", systemImage: "tray")
             } else if kind == .category {
-                ForEach(ledger.categories, id: \.id) { row in
-                    Button { route = MetadataRoute(recordID: row.id) } label: {
-                        metadataRow(row.name, visual: row.visual, status: row.isArchived ? "已停用" : (row.type == .income ? "收入" : "支出"),
-                            subcategory: row.parentID != nil)
-                    }.foregroundStyle(.primary)
-                }
+                let categories = ledger.categoriesInHierarchy
+                categorySection("支出", rows: categories.filter { $0.type == .expense })
+                categorySection("收入", rows: categories.filter { $0.type == .income })
             } else if kind == .account {
                 ForEach(ledger.accounts, id: \.id) { row in
                     Button { route = MetadataRoute(recordID: row.id) } label: {
@@ -42,6 +52,25 @@ struct MetadataListView: View {
         .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("新增\(kind.title)", systemImage: "plus") { route = MetadataRoute(recordID: nil) } } }
         .sheet(item: $route) { route in MetadataEditorView(ledger: ledger, kind: kind, recordID: route.recordID) }
         .refreshable { await ledger.reload() }
+        .alert("内置分类", isPresented: $showsCatalogResult) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(addedCategoryCount == 0 ? "没有新增分类。" : "已添加 \(addedCategoryCount) 个分类。")
+        }
+    }
+
+    @ViewBuilder
+    private func categorySection(_ title: LocalizedStringKey, rows: [Category]) -> some View {
+        if !rows.isEmpty {
+            Section(title) {
+                ForEach(rows, id: \.id) { row in
+                    Button { route = MetadataRoute(recordID: row.id) } label: {
+                        metadataRow(row.name, visual: row.visual, status: row.isArchived ? "已停用" : nil,
+                            subcategory: row.parentID != nil)
+                    }.foregroundStyle(.primary)
+                }
+            }
+        }
     }
 
     private func metadataRow(_ name: String, visual: LedgerVisual? = nil, status: String?, subcategory: Bool = false) -> some View {

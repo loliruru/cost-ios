@@ -151,6 +151,13 @@ final class LedgerUITests: XCTestCase {
         app.buttons["分类"].tap()
         XCTAssertTrue(app.staticTexts["暂无分类"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.navigationBars.buttons["新增分类"].exists)
+        app.buttons["添加内置分类"].tap()
+        let catalogResult = app.alerts["内置分类"]
+        XCTAssertTrue(catalogResult.waitForExistence(timeout: 10))
+        XCTAssertTrue(catalogResult.staticTexts["已添加 35 个分类。"].exists)
+        catalogResult.buttons["好"].firstMatch.tap()
+        let meals = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "三餐")).firstMatch
+        XCTAssertTrue(meals.waitForExistence(timeout: 10))
         app.navigationBars.buttons["设置"].tap()
         app.buttons["账户"].tap()
         XCTAssertTrue(app.staticTexts["暂无账户"].waitForExistence(timeout: 10))

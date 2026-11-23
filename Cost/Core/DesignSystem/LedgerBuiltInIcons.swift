@@ -16,46 +16,11 @@ struct LedgerBuiltInIcon: Identifiable, Sendable {
         return Image(id).renderingMode(.template)
     }
 
-    static let expenseIcons: [Self] = [
-        Self("category-dining", "餐饮"),
-        Self("category-meals", "三餐"),
-        Self("category-chips", "薯片"),
-        Self("category-traffic", "交通"),
-        Self("category-metro", "地铁公交"),
-        Self("category-taxi", "打车"),
-        Self("category-rail", "城际交通"),
-        Self("category-home", "住房"),
-        Self("category-rent", "房租"),
-        Self("category-utilities", "水电燃气"),
-        Self("category-hardware", "数码硬件"),
-        Self("category-equipment", "设备与核心部件"),
-        Self("category-accessories", "配件与维修"),
-        Self("category-electronics", "电子制作"),
-        Self("category-digital", "数字服务"),
-        Self("category-software-ai", "软件与 AI"),
-        Self("category-cloud", "云与网络"),
-        Self("category-telecom", "通讯"),
-        Self("category-entertainment", "娱乐"),
-        Self("category-games", "游戏"),
-        Self("category-shows", "影音演出"),
-        Self("category-collectibles", "收藏周边"),
-        Self("category-daily", "日常生活"),
-        Self("category-household", "日用百货"),
-        Self("category-health", "医疗健康"),
-        Self("category-clothes", "服饰"),
-        Self("category-finance", "金融费用"),
-        Self("category-fees", "手续费"),
-        Self("category-investment-loss", "已实现投资损失"),
-    ]
+    static let expenseIcons = BuiltInCategoryCatalog.expenses.flatMap(\.items)
+        .map { Self($0.iconKey, $0.iconTitle) }
 
-    static let incomeIcons: [Self] = [
-        Self("category-other-income", "其他收入"),
-        Self("category-returns", "回款"),
-        Self("category-refund", "退款"),
-        Self("category-reimbursements", "分摊与报销"),
-        Self("category-salary", "工资奖金"),
-        Self("category-investment-gain", "投资收益"),
-    ]
+    static let incomeIcons = BuiltInCategoryCatalog.incomes.flatMap(\.items)
+        .map { Self($0.iconKey, $0.iconTitle) }
 
     static let systemIcons: [Self] = [
         ("tag", "标签"), ("cart", "购物车"), ("fork.knife", "餐具"), ("car", "汽车"),

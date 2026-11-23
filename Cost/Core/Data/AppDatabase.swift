@@ -77,7 +77,11 @@ final class AppDatabase: Sendable {
         let seed = try DatabaseSeed.loadV1()
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1_schema") { db in try db.execute(sql: sql) }
-        migrator.registerMigration("v1_seed") { db in try seed.install(in: db) }
+        migrator.registerMigration("v1_seed") { db in
+            let isNew = try (CategoryRecord.fetchCount(db) == 0 && AccountRecord.fetchCount(db) == 0)
+            try seed.install(in: db)
+            if isNew { _ = try GRDBLedgerRepository.installBuiltInCategories(db) }
+        }
         return migrator
     }
 

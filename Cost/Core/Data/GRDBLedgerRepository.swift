@@ -70,6 +70,15 @@ struct GRDBLedgerRepository: CurrencyRepository, CategoryRepository, AccountRepo
     func category(id: String) async throws -> Category? {
         try await read { db in try CategoryRecord.fetchOne(db, key: id)?.model() }
     }
+    func installBuiltInCategories() async throws -> Int {
+        try await write { db in try Self.installBuiltInCategories(db) }
+    }
+    static func installBuiltInCategories(_ db: Database) throws -> Int {
+        let existing = try CategoryRecord.fetchAll(db).map { try $0.model() }
+        let additions = BuiltInCategoryCatalog.additions(to: existing)
+        for category in additions { try CategoryRecord(category).insert(db) }
+        return additions.count
+    }
     func saveCategory(_ category: Category) async throws {
         try category.validate()
         try await write { db in

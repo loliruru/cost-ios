@@ -168,6 +168,19 @@ final class LedgerViewModel {
         }
     }
     func categoryName(_ id: String) -> String { categories.first { $0.id == id }?.name ?? "分类不可用" }
+    var categoriesInHierarchy: [Category] {
+        let byParent = Dictionary(grouping: categories, by: \.parentID)
+        return byParent[nil, default: []].flatMap { parent in
+            [parent] + byParent[parent.id, default: []]
+        }
+    }
+    func installBuiltInCategories() async -> Int? {
+        var added = 0
+        let installed = await perform {
+            added = try await services.categories.installBuiltInCategories()
+        }
+        return installed ? added : nil
+    }
     func setBaseCurrency(_ code: CurrencyCode) async throws {
         guard let preferences = services.basePreferences, let currency = try await services.currencies.currency(code: code),
               currency.isEnabled, currency.assetType == .fiat else { throw LedgerError.invalidCurrencyType }

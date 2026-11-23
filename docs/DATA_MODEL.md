@@ -74,7 +74,9 @@ Fiat latest 的 expiresAt = provider data timestamp + 300000 ms，`now <= expire
 | Fiat 启用 | CNY 2、USD 2、JPY 0、EUR 2、GBP 2、HKD 2、KRW 0、SGD 2、AUD 2、CAD 2、CHF 2 |
 | Crypto 停用 | USDT 6、USDC 6、BTC 8、ETH 18 |
 
-稳定 code/ID，insert-ignore，不覆盖 enabled/sort 或用户名称/图标。Android 通用数据库实际仅 seed 币种；iOS 原计划另要求默认分类/账户，因此 iOS 使用明确的非个人最小 seed：“其他支出”“其他收入”“默认账户”，稳定 ID 为 seed-expense-other/seed-income-other/seed-default-account。没有个人 ID、图片、账单或金额；账户资金不设置，seed 时间为确定的 epoch 0 元数据。用户编辑/停用的已有记录不覆盖，迁移只执行一次，不在每次启动重建被删除的默认资料。
+稳定 code/ID，insert-ignore，不覆盖 enabled/sort 或用户名称/图标。冻结的 `CostSeedV1.json` 提供币种、「其他支出」「其他收入」「默认账户」，稳定 ID 为 seed-expense-other/seed-income-other/seed-default-account。首次执行 `v1_seed` 且分类和账户均为空时，在同一个事务追加内置分类。预设使用 epoch 0 时间和稳定 ID，复用已有父项时子项 ID 包含实际父项 ID。内置资料包含分类名称与图标键，账户资金保持未设置。
+
+已有账本通过「设置 → 分类 → 添加内置分类」追加缺项。以稳定 ID 或同一父项、同一收支类型下的唯一规范同名项复用分类。已停用或匹配不明确的一级分支保持原状。整次写入在单一事务内执行，重复执行保留现有分类。清空之后按需手动添加，重开应用时不会重跑种子步骤。
 
 Android v1 核心账本；v2 受管视觉；v3 Fiat FX；v4 模板；v5 循环；v6 异常反馈；v7 Crypto；v8 restore outbox；v9 最近索引；v10 账户资金。Android 导出 v1...v10 和显式 Migration 当前存在；iOS 不运行或修改 Android 迁移。Phase 0 冻结无个人数据的 v10 schema 证据；Phase 2 已运行 iOS 新库、分步 seed、失败回滚/重试和拒绝未来库的迁移测试。
 
