@@ -146,8 +146,8 @@ def verify_workflow() -> None:
     require(set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}, "Unexpected workflow triggers")
     require(workflow["permissions"] == {"contents": "read"}, "Build token must be read-only")
     job = workflow["jobs"]["build"]
-    require(job["runs-on"] in {"macos-15", "macos-15-intel"} and job["timeout-minutes"] == 40,
-            "Unexpected build runner/timeout")
+    runner_timeouts = {"macos-15": 40, "macos-15-intel": 85}
+    require(job["timeout-minutes"] == runner_timeouts.get(job["runs-on"]), "Unexpected build runner/timeout")
     require("secrets." not in path.read_text(encoding="utf-8"), "Unsigned build must not require user secrets")
     # Parse the actual shell blocks; never execute macOS build commands on Windows.
     bash = Path("C:/Program Files/Git/bin/bash.exe") if sys.platform == "win32" else shutil.which("bash")
