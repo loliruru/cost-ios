@@ -177,3 +177,9 @@ Phase 9 基线 CI 耗时约 35 分钟，首轮 Phase 10 工作按 5 分钟上限
 账本清空和清理标记在同一个 SQLite 事务提交。清理中断可在应用里继续，重开应用也会重试。回归用例覆盖确认前取消、删除事务回滚、重开后继续清理、分类和账户仍为空，以及用自建分类和账户重新记账。
 
 2026-11-22，构建 15 的源码 `7ba6f42d9614d9b732655198364a1740e5276e96` 通过模拟器构建、124 项 Swift 测试、11 项原生 UI 测试、2 项 iOS 18 回退测试和未签名设备 Archive。iOS 26 首轮 UI 测试遇到两个同名确认节点，按稳定标识选择后复跑通过。Windows 复核了 1.0.1 / build 15 的未签名 arm64 IPA 及其 SHA-256 `acd4fbba9d7ea127406fbc2a0f2b05c5e5054f620b7961ec8bdba352f5c1295e`。 [通过的 CI](https://github.com/loliruru/cost-ios/actions/runs/45030648808) [未签名 IPA](https://github.com/loliruru/cost-ios/actions/runs/45030648808/artifacts/14757909852)
+
+### 账单首页显示标签
+
+2026-11-24，账单列表在备注下方显示带系统标签图标的胶囊。有多个标签时根据可用宽度并排或逐个换行。VoiceOver 在同一个账单项里分别读出备注和标签。
+
+Windows 已通过 Foundation、数据层和 Git 差异检查。已添加备注和标签同时出现的 UI 回归用例，模拟器运行及真机视觉验收待完成。

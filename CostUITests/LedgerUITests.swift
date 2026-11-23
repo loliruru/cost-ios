@@ -64,6 +64,37 @@ final class LedgerUITests: XCTestCase {
     }
 
     @MainActor
+    func testLedgerRowIncludesBothNoteAndTag() {
+        let app = launch()
+        app.buttons["ledger.add"].tap()
+        let amount = app.textFields["entry.amount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 10))
+        amount.tap()
+        amount.typeText("8.25")
+
+        let more = app.buttons["账户、日期、备注与标签"]
+        reveal(more, in: app)
+        more.tap()
+        let note = app.descendants(matching: .any)["entry.note"].firstMatch
+        reveal(note, in: app)
+        note.tap()
+        note.typeText("Adapter")
+
+        let tag = app.textFields["新标签（同名自动复用）"]
+        reveal(tag, in: app)
+        tag.tap()
+        tag.typeText("Desk setup")
+        let addTag = app.buttons["添加"]
+        reveal(addTag, in: app)
+        addTag.tap()
+        XCTAssertTrue(app.switches["Desk setup"].waitForExistence(timeout: 10))
+        app.buttons["entry.save"].tap()
+
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ledger.row.'")).firstMatch
+        assertLabel(row, contains: "备注 Adapter，标签 Desk setup")
+    }
+
+    @MainActor
     func testPortableDataSettingsExposeCSVAndBackupActions() {
         let app = launch()
         app.tabBars.buttons["设置"].tap()

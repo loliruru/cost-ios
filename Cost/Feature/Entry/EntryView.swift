@@ -60,6 +60,7 @@ struct EntryView: View {
                     DatePicker("发生时间", selection: date).environment(\.timeZone, TimeZone(identifier: model.draft.zoneID) ?? .current)
                     CostValueRow("冻结时区", value: model.draft.zoneID)
                     TextField("备注", text: $model.draft.note, axis: .vertical).lineLimit(3...8)
+                        .accessibilityIdentifier("entry.note")
                     ForEach(ledger.tags.filter { !$0.isArchived || model.draft.tagIDs.contains($0.id) }, id: \.id) { tag in
                         Toggle(tag.name, isOn: Binding(get: { model.draft.tagIDs.contains(tag.id) }, set: { if $0 { model.draft.tagIDs.insert(tag.id) } else { model.draft.tagIDs.remove(tag.id) } }))
                     }

@@ -143,6 +143,7 @@ struct LedgerListView: View {
                 ForEach(days, id: \.self) { day in
                     Section(LedgerStyle.day(day)) {
                         ForEach(model.rows.filter { $0.occurredAt.localEpochDay == day }, id: \.id) { row in
+                            let tags = row.tagIDs.isEmpty ? [] : model.tags.filter { row.tagIDs.contains($0.id) }
                             Button { detail = row } label: {
                                 HStack(alignment: .top, spacing: 12) {
                                     LedgerIcon(visual: model.categories.first { $0.id == row.categoryID }?.visual ?? LedgerVisual(), repository: model.services.visuals)
@@ -150,10 +151,13 @@ struct LedgerListView: View {
                                         Text(model.categoryName(row.categoryID)).foregroundStyle(.primary)
                                         Text(LedgerStyle.amount(row)).font(.headline).monospacedDigit().foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                                         Text(model.accountName(row.accountID)).font(.caption).foregroundStyle(.secondary)
-                                    if let note = row.note {
-                                        Text(note).font(.subheadline).foregroundStyle(.secondary)
-                                            .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
-                                    }
+                                        if let note = row.note {
+                                            Text(note).font(.subheadline).foregroundStyle(.secondary)
+                                                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                                        }
+                                        if !tags.isEmpty {
+                                            LedgerRowTags(tags: tags)
+                                        }
                                     }
                                     Spacer(minLength: 0)
                                     if !typeSize.isAccessibilitySize {
@@ -161,7 +165,7 @@ struct LedgerListView: View {
                                     }
                                 }
                             }
-                            .accessibilityLabel(rowLabel(row))
+                            .accessibilityLabel(rowLabel(row, tags: tags))
                             .accessibilityIdentifier("ledger.row.\(row.id)")
                             .swipeActions {
                                 if row.deletedAt == nil {
@@ -202,10 +206,11 @@ struct LedgerListView: View {
         }
     }
 
-    private func rowLabel(_ row: LedgerTransaction) -> String {
+    private func rowLabel(_ row: LedgerTransaction, tags: [Tag]) -> String {
         var parts = [row.type == .expense ? "支出" : "收入", LedgerStyle.amount(row),
             model.categoryName(row.categoryID), model.accountName(row.accountID)]
-        if let note = row.note, !note.isEmpty { parts.append(note) }
+        if let note = row.note, !note.isEmpty { parts.append("备注 \(note)") }
+        if !tags.isEmpty { parts.append("标签 \(tags.map(\.name).joined(separator: "、"))") }
         if row.deletedAt != nil { parts.append("已删除") }
         return parts.joined(separator: "，")
     }
@@ -219,6 +224,32 @@ struct LedgerListView: View {
     private func restore(id: String) {
         Task {
             if await model.restore(id: id) { CostHaptics.success() }
+        }
+    }
+}
+
+private struct LedgerRowTags: View {
+    let tags: [Tag]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 6) { capsules }
+            VStack(alignment: .leading, spacing: 4) { capsules }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var capsules: some View {
+        ForEach(tags, id: \.id) { tag in
+            Label(tag.name, systemImage: "tag")
+                .labelStyle(.titleAndIcon)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(uiColor: .tertiarySystemGroupedBackground), in: Capsule())
+                .overlay { Capsule().strokeBorder(Color(uiColor: .separator), lineWidth: 1) }
         }
     }
 }
