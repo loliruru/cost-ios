@@ -116,14 +116,7 @@ struct MetadataEditorView: View {
                         if model.visual.source == .emoji {
                             TextField("单个 Emoji", text: Binding(get: { model.visual.emoji ?? "" }, set: { model.visual.emoji = $0 }))
                         } else {
-                            Picker("内置图标", selection: $model.visual.iconKey) {
-                                if !LedgerStyle.iconKeys.contains(model.visual.iconKey) {
-                                    Label("当前图标", systemImage: LedgerStyle.symbol(model.visual.iconKey)).tag(model.visual.iconKey)
-                                }
-                                ForEach(LedgerStyle.iconKeys, id: \.self) { key in
-                                    Label(LedgerStyle.iconTitle(key), systemImage: LedgerStyle.symbol(key)).tag(key)
-                                }
-                            }
+                            LedgerBuiltInIconPicker(title: "内置图标", selection: $model.visual.iconKey)
                         }
                         LedgerIcon(visual: model.visual, repository: model.ledger.services.visuals)
                     }

@@ -87,8 +87,12 @@ private struct QuickTemplateRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Button(action: editTemplate) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(template.content.name, systemImage: LedgerStyle.symbol(template.content.iconKey))
-                        .font(.headline)
+                    Label {
+                        Text(template.content.name)
+                    } icon: {
+                        LedgerBuiltInIcon.image(for: template.content.iconKey)
+                    }
+                    .font(.headline)
                     Text("\(template.content.type == .expense ? "支出" : "收入") \(template.content.amount.plainText) \(template.content.amount.currencyCode.rawValue)")
                         .monospacedDigit()
                     Text("一键记账 \(template.usageCount) 次").font(.footnote).foregroundStyle(.secondary)
@@ -175,14 +179,7 @@ private struct QuickTemplateEditorView: View {
     private var summaryFields: some View {
         Section {
             TextField("名称", text: $model.draft.name).accessibilityIdentifier("template.name")
-            Picker("图标", selection: $model.draft.iconKey) {
-                if !LedgerStyle.iconKeys.contains(model.draft.iconKey) {
-                    Label("当前图标", systemImage: LedgerStyle.symbol(model.draft.iconKey)).tag(model.draft.iconKey)
-                }
-                ForEach(LedgerStyle.iconKeys, id: \.self) { key in
-                    Label(LedgerStyle.iconTitle(key), systemImage: LedgerStyle.symbol(key)).tag(key)
-                }
-            }
+            LedgerBuiltInIconPicker(title: "图标", selection: $model.draft.iconKey)
             VStack(alignment: .leading, spacing: 6) {
                 Text("排序（小的在前）").font(.subheadline)
                 TextField("自动排序", text: $model.order).keyboardType(.numbersAndPunctuation)
